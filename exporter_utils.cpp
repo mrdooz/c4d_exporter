@@ -1,6 +1,5 @@
 #include "exporter_utils.hpp"
 #include "exporter.hpp"
-#include "generated/scene_format.friendly.hpp"
 
 IdGenerator g_ObjectId(0);
 IdGenerator g_MaterialId(1);
@@ -26,9 +25,9 @@ void CopyVectorToArray(const T& v, float* out)
 //-----------------------------------------------------------------------------
 void CopyTransform(const melange::Matrix& mtx, scene::Transform* xform)
 {
-  CopyVectorToArray(mtx.off, xform->pos);
-  CopyVectorToArray(melange::MatrixToHPB(mtx, melange::ROTATIONORDER_HPB), xform->rot);
-  CopyVectorToArray(melange::Vector(Len(mtx.v1), Len(mtx.v2), Len(mtx.v3)), xform->scale);
+  //CopyVectorToArray(mtx.off, xform->pos);
+  //CopyVectorToArray(melange::MatrixToHPB(mtx, melange::ROTATIONORDER_HPB), xform->rot);
+  //CopyVectorToArray(melange::Vector(Len(mtx.v1), Len(mtx.v2), Len(mtx.v3)), xform->scale);
 }
 
 //-----------------------------------------------------------------------------

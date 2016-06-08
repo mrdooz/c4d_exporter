@@ -53,16 +53,16 @@ bool melange::AlienNullObjectData::Execute()
   ExportSplineChildren(baseObj);
 #endif
 
-  {
-    shared_ptr<scene::NullObject> nullObject = make_shared<scene::NullObject>();
-    nullObject->name = name;
-    nullObject->id = g_ObjectId.NextId();
+  //{
+  //  shared_ptr<scene::NullObject> nullObject = make_shared<scene::NullObject>();
+  //  nullObject->name = name;
+  //  nullObject->id = g_ObjectId.NextId();
 
-    CopyTransform(baseObj->GetMl(), &nullObject->xformLocal);
-    CopyTransform(baseObj->GetMg(), &nullObject->xformGlobal);
+  //  CopyTransform(baseObj->GetMl(), &nullObject->xformLocal);
+  //  CopyTransform(baseObj->GetMg(), &nullObject->xformGlobal);
 
-    g_Scene2.nullObjects.push_back(nullObject);
-  }
+  //  g_Scene2.nullObjects.push_back(nullObject);
+  //}
 
   return true;
 }
@@ -105,7 +105,7 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<exporter::T
         if (ct->GetTrackCategory() == melange::PSEUDO_VALUE)
         {
           curve.keyframes.push_back(
-              exporter::Keyframe{(int)t.GetFrame(g_Doc->GetFps()), ck->GetValue()});
+              exporter::Keyframe{(int)t.GetFrame(g_Doc->GetFps()), (float)ck->GetValue()});
         }
         else if (ct->GetTrackCategory() == melange::PSEUDO_PLUGIN && ct->GetType() == CTpla)
         {
@@ -180,6 +180,7 @@ void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
 void CollectMaterials2(melange::AlienBaseDocument* c4dDoc)
 {
   // add default material
+#if 0
   shared_ptr<scene::Material> defaultMaterial = make_shared<scene::Material>();
   defaultMaterial->name = "<default>";
   defaultMaterial->id = ~0;
@@ -230,6 +231,7 @@ void CollectMaterials2(melange::AlienBaseDocument* c4dDoc)
               GetFloatParam(baseMat, melange::MATERIAL_REFLECTION_BRIGHTNESS)}));
     }
   }
+#endif
 }
 
 //-----------------------------------------------------------------------------

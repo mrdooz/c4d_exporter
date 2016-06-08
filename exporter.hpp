@@ -1,7 +1,5 @@
 #pragma once
 
-#include "generated/scene_format.friendly.hpp"
-
 #define WITH_XFORM_MTX 0
 
 static u32 DEFAULT_MATERIAL = ~0u;
@@ -226,7 +224,6 @@ namespace exporter
   };
 }
 
-extern scene::Scene g_Scene2;
 extern exporter::Scene g_scene;
 extern exporter::Options options;
 extern vector<function<bool()>> g_deferredFunctions;

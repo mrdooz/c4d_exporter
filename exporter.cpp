@@ -37,7 +37,7 @@ namespace
 melange::AlienBaseDocument* g_Doc;
 melange::HyperFile* g_File;
 
-scene::Scene g_Scene2;
+//scene::Scene g_Scene2;
 exporter::Scene g_scene;
 exporter::Options options;
 // Fixup functions called after the scene has been read and processed.

@@ -3,9 +3,9 @@
 #include "exporter.hpp"
 #include "export_misc.hpp"
 
-static unordered_map<int, scene::Light::FalloffType> FALLOFF_LOOKUP = {
-  { melange::LIGHT_DETAILS_FALLOFF_NONE, scene::Light::FalloffType::None },
-  { melange::LIGHT_DETAILS_FALLOFF_LINEAR, scene::Light::FalloffType::Linear } };
+//static unordered_map<int, scene::Light::FalloffType> FALLOFF_LOOKUP = {
+//  { melange::LIGHT_DETAILS_FALLOFF_NONE, scene::Light::FalloffType::None },
+//  { melange::LIGHT_DETAILS_FALLOFF_LINEAR, scene::Light::FalloffType::Linear } };
 
 //-----------------------------------------------------------------------------
 bool melange::AlienLightObjectData::Execute()
