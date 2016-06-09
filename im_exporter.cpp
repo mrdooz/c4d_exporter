@@ -126,22 +126,7 @@ bool melange::AlienCameraObjectData::Execute()
 
   // Check if the camera is a target camera
   BaseTag* targetTag = baseObj->GetTag(Ttargetexpression);
-  if (targetTag)
-  {
-    BaseObject* targetObj = targetTag->GetDataInstance()->GetObjectLink(TARGETEXPRESSIONTAG_LINK);
-
-    // defer finding the target object until all objects have been parsed
-    g_deferredFunctions.push_back([&]() {
-      camera->targetObj = g_scene.FindObject(targetObj);
-      if (!camera->targetObj)
-      {
-        LOG(1, "Unable to find target object: %s", CopyString(targetObj->GetName()).c_str());
-        return false;
-      }
-      return true;
-    });
-  }
-  else
+  if (!targetTag)
   {
     // Not a target camera, so require the parent object to be a null object
     BaseObject* parent = baseObj->GetUp();
@@ -164,6 +149,24 @@ bool melange::AlienCameraObjectData::Execute()
   camera->farPlane = GetInt32Param(baseObj, CAMERAOBJECT_FAR_CLIPPING_ENABLE)
     ? GetFloatParam(baseObj, CAMERAOBJECT_FAR_CLIPPING)
     : DEFAULT_FAR_PLANE;
+
+  if (targetTag)
+  {
+    BaseObject* targetObj = targetTag->GetDataInstance()->GetObjectLink(TARGETEXPRESSIONTAG_LINK);
+    ImCamera* cameraPtr = camera.get();
+
+    // defer finding the target object until all objects have been parsed
+    g_deferredFunctions.push_back([=]() {
+      cameraPtr->targetObj = g_scene.FindObject(targetObj);
+      if (!cameraPtr->targetObj)
+      {
+        LOG(1, "Unable to find target object: %s", CopyString(targetObj->GetName()).c_str());
+        return false;
+      }
+      return true;
+    });
+  }
+
 
   g_scene.cameras.push_back(camera.release());
 

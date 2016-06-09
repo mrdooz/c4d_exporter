@@ -162,7 +162,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\contrib\json11\json11.cpp" />
     <ClCompile Include="..\exporter_utils.cpp" />
     <ClCompile Include="..\im_exporter.cpp" />
     <ClCompile Include="..\im_scene.cpp" />
@@ -192,7 +191,6 @@
     <ClInclude Include="..\compress\indexcompressionconstants.h" />
     <ClInclude Include="..\compress\readbitstream.h" />
     <ClInclude Include="..\compress\writebitstream.h" />
-    <ClInclude Include="..\contrib\json11\json11.hpp" />
     <ClInclude Include="..\deferred_writer.hpp" />
     <ClInclude Include="..\exporter.hpp" />
     <ClInclude Include="..\exporter_types.hpp" />

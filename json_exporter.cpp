@@ -52,15 +52,20 @@ struct JsonWriter
     res += Indent() + "\"" + name + "\": ";
   }
 
+  void EmitKey(const char* name)
+  {
+    EmitKey(string(name));
+  }
+
   void Emit()
   {
     res += "null";
   }
 
-  void Emit(bool value)
-  {
-    res += value ? "true" : "false";
-  }
+  //void Emit(bool value)
+  //{
+  //  res += value ? "true" : "false";
+  //}
 
   void Emit(int value)
   {
@@ -93,13 +98,17 @@ bool ExportAsJson(const ImScene& scene, const Options& options, SceneStats* stat
   JsonWriter w;
   w.Begin(JsonWriter::CompoundType::Object);
 
-  w.EmitKey("name");
-  w.Emit(10);
+  w.EmitKey("accessors ");
+  w.Begin(JsonWriter::CompoundType::Object);
+  w.EmitKey("accessor_21 ");
+  w.Begin(JsonWriter::CompoundType::Object);
+
+  w.EmitKey("bufferView");
+  w.Emit("bufferView_29");
 
   w.End();
-  picojson::value v;
+  w.End();
 
-  json11::Json obj;
-  //obj["magnus"] = "test";
+  w.End();
   return true;
 }
