@@ -32,7 +32,7 @@ namespace exporter
   };
 
   //------------------------------------------------------------------------------
-  bool SaveScene(const Scene& scene, const Options& options, SceneStats* stats)
+  bool SaveScene(const ImScene& scene, const Options& options, SceneStats* stats)
   {
     DeferredWriter writer;
     if (!writer.Open(options.outputFilename.c_str()))
@@ -55,7 +55,7 @@ namespace exporter
       ScopedStats s(writer, &stats->nullObjectSize);
       header.numNullObjects = (u32)scene.nullObjects.size();
       header.nullObjectDataStart = header.numNullObjects ? (u32)writer.GetFilePos() : 0;
-      for (NullObject* obj : scene.nullObjects)
+      for (ImNullObject* obj : scene.nullObjects)
       {
         SaveNullObject(obj, options, writer);
       }
@@ -68,7 +68,7 @@ namespace exporter
     vector<int> fixups = CreateFixupRange(header.numMeshes, writer);
     for (int i = 0; i < (int)scene.meshes.size(); ++i)
     {
-      Mesh* mesh = scene.meshes[i];
+      ImMesh* mesh = scene.meshes[i];
       writer.InsertFixup(fixups[i]);
       SaveMesh(mesh, options, writer);
     }
@@ -78,7 +78,7 @@ namespace exporter
     ScopedStats s(writer, &stats->lightSize);
     header.numLights = (u32)scene.lights.size();
     header.lightDataStart = header.numLights ? (u32)writer.GetFilePos() : 0;
-    for (const Light* light : scene.lights)
+    for (const ImLight* light : scene.lights)
     {
       SaveLight(light, options, writer);
     }
@@ -88,7 +88,7 @@ namespace exporter
     ScopedStats s(writer, &stats->cameraSize);
     header.numCameras = (u32)scene.cameras.size();
     header.cameraDataStart = header.numCameras ? (u32)writer.GetFilePos() : 0;
-    for (const Camera* camera : scene.cameras)
+    for (const ImCamera* camera : scene.cameras)
     {
       SaveCamera(camera, options, writer);
     }
@@ -98,7 +98,7 @@ namespace exporter
     ScopedStats s(writer, &stats->materialSize);
     header.numMaterials = (u32)scene.materials.size();
     header.materialDataStart = header.numMaterials ? (u32)writer.GetFilePos() : 0;
-    for (const Material* material : scene.materials)
+    for (const ImMaterial* material : scene.materials)
     {
       SaveMaterial(material, options, writer);
     }
@@ -108,7 +108,7 @@ namespace exporter
     ScopedStats s(writer, &stats->splineSize);
     header.numSplines = (u32)scene.splines.size();
     header.splineDataStart = header.numSplines ? (u32)writer.GetFilePos() : 0;
-    for (const Spline* spline : scene.splines)
+    for (const ImSpline* spline : scene.splines)
     {
       SaveSpline(spline, options, writer);
     }
@@ -128,7 +128,7 @@ namespace exporter
   }
 
   //------------------------------------------------------------------------------
-  void SaveMaterial(const Material* material, const Options& options, DeferredWriter& writer)
+  void SaveMaterial(const ImMaterial* material, const Options& options, DeferredWriter& writer)
   {
     writer.StartBlockMarker();
 
@@ -147,7 +147,7 @@ namespace exporter
     for (int i = 0; i < numComponents; ++i)
     {
       writer.InsertFixup(componentFixups[i]);
-      const exporter::MaterialComponent& c = material->components[i];
+      const ImMaterialComponent& c = material->components[i];
 
       writer.AddDeferredString(c.name);
       writer.Write(c.color);
@@ -159,7 +159,7 @@ namespace exporter
   }
 
   //------------------------------------------------------------------------------
-  void SaveBase(const BaseObject* base, const Options& options, DeferredWriter& writer)
+  void SaveBase(const ImBaseObject* base, const Options& options, DeferredWriter& writer)
   {
     writer.AddDeferredString(base->name);
     writer.Write(base->id);
@@ -249,7 +249,7 @@ namespace exporter
 #endif
 
   //------------------------------------------------------------------------------
-  void SaveMesh(Mesh* mesh, const Options& options, DeferredWriter& writer)
+  void SaveMesh(ImMesh* mesh, const Options& options, DeferredWriter& writer)
   {
     SaveBase(mesh, options, writer);
 
@@ -284,7 +284,7 @@ namespace exporter
     for (int i = 0; i < numStreams; ++i)
     {
       writer.InsertFixup(streamFixups[i]);
-      exporter::Mesh::DataStream& d = mesh->dataStreams[i];
+      ImMesh::DataStream& d = mesh->dataStreams[i];
 
       writer.AddDeferredString(d.name);
       writer.Write(d.flags);
@@ -294,7 +294,7 @@ namespace exporter
   }
 
   //------------------------------------------------------------------------------
-  void SaveCamera(const Camera* camera, const Options& options, DeferredWriter& writer)
+  void SaveCamera(const ImCamera* camera, const Options& options, DeferredWriter& writer)
   {
     SaveBase(camera, options, writer);
 
@@ -305,7 +305,7 @@ namespace exporter
   }
 
   //------------------------------------------------------------------------------
-  void SaveLight(const Light* light, const Options& options, DeferredWriter& writer)
+  void SaveLight(const ImLight* light, const Options& options, DeferredWriter& writer)
   {
     SaveBase(light, options, writer);
 
@@ -328,7 +328,7 @@ namespace exporter
   }
 
   //------------------------------------------------------------------------------
-  void SaveSpline(const Spline* spline, const Options& options, DeferredWriter& writer)
+  void SaveSpline(const ImSpline* spline, const Options& options, DeferredWriter& writer)
   {
     SaveBase(spline, options, writer);
 
@@ -339,7 +339,7 @@ namespace exporter
   }
 
   //------------------------------------------------------------------------------
-  void SaveNullObject(const NullObject* nullObject, const Options& options, DeferredWriter& writer)
+  void SaveNullObject(const ImNullObject* nullObject, const Options& options, DeferredWriter& writer)
   {
     SaveBase(nullObject, options, writer);
   }

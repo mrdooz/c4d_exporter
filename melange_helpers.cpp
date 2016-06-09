@@ -2,7 +2,8 @@
 #include "export_camera.hpp"
 #include "export_mesh.hpp"
 #include "export_light.hpp"
-#include "export_misc.hpp"
+//#include "export_misc.hpp"
+#include "im_exporter.hpp"
 
 using namespace melange;
 
@@ -36,22 +37,27 @@ RootMaterial* AllocAlienRootMaterial()
 {
   return NewObj(RootMaterial);
 }
+
 RootObject* AllocAlienRootObject()
 {
   return NewObj(RootObject);
 }
+
 RootLayer* AllocAlienRootLayer()
 {
   return NewObj(RootLayer);
 }
+
 RootRenderData* AllocAlienRootRenderData()
 {
   return NewObj(RootRenderData);
 }
+
 RootViewPanel* AllocC4DRootViewPanel()
 {
   return NewObj(RootViewPanel);
 }
+
 LayerObject* AllocAlienLayer()
 {
   return NewObj(LayerObject);
@@ -60,25 +66,25 @@ LayerObject* AllocAlienLayer()
 //-----------------------------------------------------------------------------
 NodeData* AllocAlienObjectData(Int32 id, Bool& known)
 {
-  NodeData* m_data = NULL;
+  NodeData* data = NULL;
   switch (id)
   {
     // supported element types
-  case Opolygon: m_data = NewObj(AlienPolygonObjectData); break;
-  case Ocamera: m_data = NewObj(AlienCameraObjectData); break;
-  case Onull: m_data = NewObj(AlienNullObjectData); break;
-  case Olight: m_data = NewObj(AlienLightObjectData); break;
-  case Opoint: m_data = NewObj(AlienPointObjectData); break;
-  case Osphere: m_data = NewObj(AlienPrimitiveObjectData); break;
-  case Ocube: m_data = NewObj(AlienPrimitiveObjectData); break;
-  case Oplane: m_data = NewObj(AlienPrimitiveObjectData); break;
-  case Ocone: m_data = NewObj(AlienPrimitiveObjectData); break;
-  case Otorus: m_data = NewObj(AlienPrimitiveObjectData); break;
-  case Ocylinder: m_data = NewObj(AlienPrimitiveObjectData); break;
+  case Opolygon: data = NewObj(AlienPolygonObjectData); break;
+  case Ocamera: data = NewObj(AlienCameraObjectData); break;
+  case Onull: data = NewObj(AlienNullObjectData); break;
+  case Olight: data = NewObj(AlienLightObjectData); break;
+  case Opoint: data = NewObj(AlienPointObjectData); break;
+  case Osphere: data = NewObj(AlienPrimitiveObjectData); break;
+  case Ocube: data = NewObj(AlienPrimitiveObjectData); break;
+  case Oplane: data = NewObj(AlienPrimitiveObjectData); break;
+  case Ocone: data = NewObj(AlienPrimitiveObjectData); break;
+  case Otorus: data = NewObj(AlienPrimitiveObjectData); break;
+  case Ocylinder: data = NewObj(AlienPrimitiveObjectData); break;
   }
 
-  known = !!m_data;
-  return m_data;
+  known = !!data;
+  return data;
 }
 
 //-----------------------------------------------------------------------------

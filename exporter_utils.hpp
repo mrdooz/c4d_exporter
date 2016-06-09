@@ -1,19 +1,21 @@
 #pragma once
 
-namespace exporter
-{
-  struct Transform;
-}
+struct ImTransform;
+struct ImTrack;
 
-namespace scene
+namespace melange
 {
-  struct Transform;
+  class AlienBaseDocument;
 }
 
 //-----------------------------------------------------------------------------
-void CopyTransform(const melange::Matrix& mtx, exporter::Transform* xform);
-void CopyTransform(const melange::Matrix& mtx, scene::Transform* xform);
+struct ImTransform;
+void CopyTransform(const melange::Matrix& mtx, ImTransform* xform);
 void CopyMatrix(const melange::Matrix& mtx, float* out);
+
+void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* tracks);
+void CollectMaterials(melange::AlienBaseDocument* c4dDoc);
+void CollectMaterials2(melange::AlienBaseDocument* c4dDoc);
 
 string CopyString(const melange::String& str);
 

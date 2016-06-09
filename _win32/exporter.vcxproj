@@ -75,7 +75,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(MELANGE_SDK)\includes;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\projects\Melange15.0_126014\libraries\win\melangelib_2013_MT;$(SolutionDir)..\contrib\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\projects\Melange15.0_126014\libraries\win\melangelib_2013_MT;$(SolutionDir)..\contrib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -162,11 +162,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\export_camera.cpp" />
-    <ClCompile Include="..\export_light.cpp" />
-    <ClCompile Include="..\export_mesh.cpp" />
-    <ClCompile Include="..\export_misc.cpp" />
+    <ClCompile Include="..\contrib\json11\json11.cpp" />
     <ClCompile Include="..\exporter_utils.cpp" />
+    <ClCompile Include="..\im_exporter.cpp" />
+    <ClCompile Include="..\im_scene.cpp" />
+    <ClCompile Include="..\json_exporter.cpp" />
     <ClCompile Include="..\melange_helpers.cpp" />
     <ClCompile Include="..\save_scene.cpp" />
     <ClCompile Include="..\compress\forsythtriangleorderoptimizer.cpp" />
@@ -192,13 +192,14 @@
     <ClInclude Include="..\compress\indexcompressionconstants.h" />
     <ClInclude Include="..\compress\readbitstream.h" />
     <ClInclude Include="..\compress\writebitstream.h" />
+    <ClInclude Include="..\contrib\json11\json11.hpp" />
     <ClInclude Include="..\deferred_writer.hpp" />
     <ClInclude Include="..\exporter.hpp" />
-    <ClInclude Include="..\export_camera.hpp" />
-    <ClInclude Include="..\export_light.hpp" />
-    <ClInclude Include="..\export_mesh.hpp" />
-    <ClInclude Include="..\export_misc.hpp" />
+    <ClInclude Include="..\exporter_types.hpp" />
     <ClInclude Include="..\exporter_utils.hpp" />
+    <ClInclude Include="..\im_exporter.hpp" />
+    <ClInclude Include="..\im_scene.hpp" />
+    <ClInclude Include="..\json_exporter.hpp" />
     <ClInclude Include="..\melange_helpers.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\save_scene.hpp" />

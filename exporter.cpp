@@ -11,6 +11,7 @@
 #include "arg_parse.hpp"
 #include "exporter_utils.hpp"
 #include "export_misc.hpp"
+#include "json_exporter.hpp"
 
 //-----------------------------------------------------------------------------
 namespace
@@ -37,16 +38,16 @@ namespace
 melange::AlienBaseDocument* g_Doc;
 melange::HyperFile* g_File;
 
-//scene::Scene g_Scene2;
-exporter::Scene g_scene;
-exporter::Options options;
+ImScene g_scene;
+Options options;
+
 // Fixup functions called after the scene has been read and processed.
 vector<function<bool()>> g_deferredFunctions;
 
-u32 exporter::Scene::nextObjectId = 1;
-u32 exporter::Material::nextId;
+u32 ImScene::nextObjectId = 1;
+u32 ImMaterial::nextId;
 
-unordered_map<melange::BaseObject*, vector<exporter::Track>> g_AnimationTracks;
+unordered_map<melange::BaseObject*, vector<ImTrack>> g_AnimationTracks;
 
 //-----------------------------------------------------------------------------
 string FilenameFromInput(const string& inputFilename, bool stripPath)
@@ -71,16 +72,16 @@ string FilenameFromInput(const string& inputFilename, bool stripPath)
 }
 
 //------------------------------------------------------------------------------
-exporter::BaseObject* exporter::Scene::FindObject(melange::BaseObject* obj)
+ImBaseObject* ImScene::FindObject(melange::BaseObject* obj)
 {
   auto it = objMap.find(obj);
   return it == objMap.end() ? nullptr : it->second;
 }
 
 //-----------------------------------------------------------------------------
-exporter::Material* exporter::Scene::FindMaterial(melange::BaseMaterial* mat)
+ImMaterial* ImScene::FindMaterial(melange::BaseMaterial* mat)
 {
-  for (Material* m : materials)
+  for (ImMaterial* m : materials)
   {
     if (m->mat == mat)
       return m;
@@ -243,10 +244,11 @@ int main(int argc, char** argv)
 
   ExportAnimations();
 
-  exporter::SceneStats stats;
+  SceneStats stats;
   if (res)
   {
-    SaveScene(g_scene, options, &stats);
+    ExportAsJson(g_scene, options, &stats);
+    //SaveScene(g_scene, options, &stats);
   }
 
   DeleteObj(g_Doc);
