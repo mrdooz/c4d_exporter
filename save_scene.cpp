@@ -286,7 +286,7 @@ namespace exporter
       writer.InsertFixup(streamFixups[i]);
       ImMesh::DataStream& d = mesh->dataStreams[i];
 
-      writer.AddDeferredString(d.name);
+      //writer.AddDeferredString(d.name);
       writer.Write(d.flags);
       writer.Write((int)d.data.size());
       writer.AddDeferredVector(d.data);

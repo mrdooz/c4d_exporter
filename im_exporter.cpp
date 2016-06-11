@@ -100,7 +100,15 @@ ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
     valid = false;
   }
 
-  g_scene.objMap[melangeObj] = this;
+  // add the object to its parent's children
+  if (melangeParent)
+  {
+    g_deferredFunctions.push_back([this]() {
+      parent->children.push_back(this);
+      return true;
+    });
+  }
+  g_scene.melangeToImObject[melangeObj] = this;
 }
 
 
@@ -583,13 +591,13 @@ struct FatVertexSupplier
 };
 
 template <typename T>
-void CopyOutDataStream(const vector<T>& data, const string& streamName, ImMesh* mesh)
+void CopyOutDataStream(const vector<T>& data, ImMesh::DataStream::Type type, ImMesh* mesh)
 {
   size_t used = data.size() * sizeof(T);
 
   mesh->dataStreams.push_back(ImMesh::DataStream());
   ImMesh::DataStream& s = mesh->dataStreams.back();
-  s.name = streamName;
+  s.type = type;
   s.flags = 0;
   s.elemSize = sizeof(T);
   s.data.resize(used);
@@ -684,18 +692,18 @@ static void CollectVertices(PolygonObject* polyObj,
     {
       indexStream16[i] = (u16)(indexStream[i]);
     }
-    CopyOutDataStream(indexStream16, "index16", mesh);
+    CopyOutDataStream(indexStream16, ImMesh::DataStream::Type::Index16, mesh);
   }
   else
   {
-    CopyOutDataStream(indexStream, "index32", mesh);
+    CopyOutDataStream(indexStream, ImMesh::DataStream::Type::Index32, mesh);
   }
-  CopyOutDataStream(posStream, "pos", mesh);
-  CopyOutDataStream(normalStream, "normal", mesh);
+  CopyOutDataStream(posStream, ImMesh::DataStream::Type::Pos, mesh);
+  CopyOutDataStream(normalStream, ImMesh::DataStream::Type::Normal, mesh);
 
   if (uvStream.size())
   {
-    CopyOutDataStream(uvStream, "uv", mesh);
+    CopyOutDataStream(uvStream, ImMesh::DataStream::Type::UV, mesh);
   }
 }
 

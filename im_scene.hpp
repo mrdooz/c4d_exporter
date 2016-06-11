@@ -45,10 +45,7 @@ struct ImBaseObject
 
   melange::BaseObject* melangeObj = nullptr;
   ImBaseObject* parent = nullptr;
-#if WITH_XFORM_MTX
-  float mtxLocal[12];
-  float mtxGlobal[12];
-#endif
+
   ImTransform xformLocal;
   ImTransform xformGlobal;
   string name;
@@ -56,6 +53,7 @@ struct ImBaseObject
   bool valid = true;
 
   vector<ImTrack> animTracks;
+  vector<ImBaseObject*> children;
 };
 
 //------------------------------------------------------------------------------
@@ -134,7 +132,18 @@ struct ImMesh : public ImBaseObject
 
   struct DataStream
   {
-    string name;
+    enum class Type
+    {
+      Index16,
+      Index32,
+      Pos,
+      Normal,
+      UV,
+    };
+
+    size_t NumElems() const { return data.size() / elemSize; }
+
+    Type type;
     u32 flags = 0;
     int elemSize;
     vector<char> data;
@@ -159,7 +168,7 @@ struct ImScene
   vector<ImLight*> lights;
   vector<ImMaterial*> materials;
   vector<ImSpline*> splines;
-  unordered_map<melange::BaseObject*, ImBaseObject*> objMap;
+  unordered_map<melange::BaseObject*, ImBaseObject*> melangeToImObject;
 
   static u32 nextObjectId;
 };

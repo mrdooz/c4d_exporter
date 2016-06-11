@@ -198,6 +198,7 @@
     <ClInclude Include="..\im_exporter.hpp" />
     <ClInclude Include="..\im_scene.hpp" />
     <ClInclude Include="..\json_exporter.hpp" />
+    <ClInclude Include="..\json_writer.hpp" />
     <ClInclude Include="..\melange_helpers.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\save_scene.hpp" />

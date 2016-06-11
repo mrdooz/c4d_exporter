@@ -74,8 +74,8 @@ string FilenameFromInput(const string& inputFilename, bool stripPath)
 //------------------------------------------------------------------------------
 ImBaseObject* ImScene::FindObject(melange::BaseObject* obj)
 {
-  auto it = objMap.find(obj);
-  return it == objMap.end() ? nullptr : it->second;
+  auto it = melangeToImObject.find(obj);
+  return it == melangeToImObject.end() ? nullptr : it->second;
 }
 
 //-----------------------------------------------------------------------------
