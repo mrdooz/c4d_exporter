@@ -1,8 +1,4 @@
 #include "melange_helpers.hpp"
-#include "export_camera.hpp"
-#include "export_mesh.hpp"
-#include "export_light.hpp"
-//#include "export_misc.hpp"
 #include "im_exporter.hpp"
 
 using namespace melange;

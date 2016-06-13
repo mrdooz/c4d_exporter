@@ -36,7 +36,6 @@ static unordered_map<ImMesh*, int> meshCountByMesh;
 static vector<BufferView> bufferViews;
 static vector<Accessor> accessors;
 static vector<Buffer> buffers;
-static vector<char> buffer;
 
 static unordered_map<ImMesh::DataStream::Type, pair<string, string>> streamToAccessor = {
   { ImMesh::DataStream::Type::Index16, make_pair("u16", "scalar") },
@@ -114,8 +113,11 @@ static void ExportBuffers(const Options& options, JsonWriter* w)
 static void ExportBase(const ImBaseObject* obj, JsonWriter* w)
 {
   w->Emit("name", obj->name);
-  w->Emit("id", obj->id);
   
+  vector<string> children;
+  for (ImBaseObject* obj : obj->children)
+    children.push_back(obj->name);
+
   auto fnWriteXform = [=](const string& name, const ImTransform& xform)
   {
     JsonWriter::JsonScope s(w, name, JsonWriter::CompoundType::Object);
@@ -126,13 +128,13 @@ static void ExportBase(const ImBaseObject* obj, JsonWriter* w)
 
   fnWriteXform("xformLocal", obj->xformLocal);
   fnWriteXform("xformGlobal", obj->xformGlobal);
+
+  w->EmitArray("children", children);
 }
 
 //------------------------------------------------------------------------------
 static void ExportNullObjects(const vector<ImNullObject*>& nullObjects, JsonWriter* w)
 {
-  JsonWriter::JsonScope s(w, "nullObjects", JsonWriter::CompoundType::Object);
-
   for (ImNullObject* obj : nullObjects)
   {
     JsonWriter::JsonScope s(w, objectToNodeName[obj], JsonWriter::CompoundType::Object);
@@ -143,8 +145,6 @@ static void ExportNullObjects(const vector<ImNullObject*>& nullObjects, JsonWrit
 //------------------------------------------------------------------------------
 static void ExportCameras(const vector<ImCamera*>& cameras, JsonWriter* w)
 {
-  JsonWriter::JsonScope s(w, "cameras", JsonWriter::CompoundType::Object);
-
   for (ImCamera* cam : cameras)
   {
     JsonWriter::JsonScope s(w, objectToNodeName[cam], JsonWriter::CompoundType::Object);
@@ -155,8 +155,6 @@ static void ExportCameras(const vector<ImCamera*>& cameras, JsonWriter* w)
 //------------------------------------------------------------------------------
 static void ExportLights(const vector<ImLight*>& lights, JsonWriter* w)
 {
-  JsonWriter::JsonScope s(w, "lights", JsonWriter::CompoundType::Object);
-
   for (ImLight* light : lights)
   {
     JsonWriter::JsonScope s(w, objectToNodeName[light], JsonWriter::CompoundType::Object);
@@ -180,167 +178,149 @@ static void ExportLights(const vector<ImLight*>& lights, JsonWriter* w)
 }
 
 //------------------------------------------------------------------------------
-static void ExportMeshData(ImMesh*mesh, JsonWriter* w)
-{
-  size_t bufferViewSize = 0;
-  size_t bufferViewOffset = buffer.size();
-
-  string viewName = objectToNodeName[mesh] + "_bufferView";
-  size_t accessorOffset = 0;
-
-  unordered_map<ImMesh::DataStream::Type, string> dataStreamToAccessor;
-
-  // create an accessor for each data stream
-  for (const ImMesh::DataStream& d : mesh->dataStreams)
-  {
-    bufferViewSize += d.data.size();
-    size_t numElems = d.NumElems();
-    size_t ofs = accessorOffset;
-    char name[32];
-    sprintf(name, "Accessor%.5d", (int)accessors.size() + 1);
-
-    auto it = streamToAccessor.find(d.type);
-    if (it == streamToAccessor.end())
-    {
-      // LOG: unknown data stream type
-      continue;
-    }
-
-    const auto& data = it->second;
-    accessors.push_back(Accessor{ name, viewName, ofs, numElems, 0, data.first, data.second, "" });
-    buffer.insert(buffer.end(), d.data.begin(), d.data.end());
-    dataStreamToAccessor[d.type] = name;
-
-    accessorOffset += d.data.size();
-  }
-
-  {
-    // write the bindings
-    JsonWriter::JsonScope s(w, "bindings", JsonWriter::CompoundType::Object);
-    for (auto& kv : dataStreamToAccessor)
-    {
-      w->Emit(streamTypeToString[kv.first], kv.second);
-    }
-  }
-
-  {
-    // write the materialGroups
-    JsonWriter::JsonScope s(w, "materialGroups", JsonWriter::CompoundType::Array);
-    for (const ImMesh::MaterialGroup& m : mesh->materialGroups)
-    {
-      JsonWriter::JsonScope s(w, JsonWriter::CompoundType::Object);
-      w->Emit("materialId", m.materialId);
-      w->Emit("startIndex", m.startIndex);
-      w->Emit("numIndices", m.numIndices);
-    }
-  }
-
-  bufferViews.push_back(BufferView{ "buffer", viewName, bufferViewOffset, bufferViewSize });
-}
-
-//------------------------------------------------------------------------------
 static void ExportMeshes(const vector<ImMesh*>& meshes, JsonWriter* w)
 {
-  JsonWriter::JsonScope s(w, "meshes", JsonWriter::CompoundType::Object);
-
   for (ImMesh* mesh : meshes)
   {
     JsonWriter::JsonScope s(w, objectToNodeName[mesh], JsonWriter::CompoundType::Object);
     ExportBase(mesh, w);
-    ExportMeshData(mesh, w);
+
+    // gltf wants us to just write the mesh names here, and have them separate..
+    {
+      JsonWriter::JsonScope s(w, "meshes", JsonWriter::CompoundType::Array);
+
+      // XXX(magnus): just a single mesh per mesh node for now
+      w->EmitArrayElem(objectToNodeName[mesh] + "_mesh");
+    }
+
+  }
+}
+
+//------------------------------------------------------------------------------
+static void ExportMeshData(const vector<ImMesh*>& meshes, JsonWriter* w)
+{
+  JsonWriter::JsonScope s(w, "meshes", JsonWriter::CompoundType::Object);
+
+  vector<char> buffer;
+
+  for (ImMesh* mesh : meshes)
+  {
+    string meshDataName = objectToNodeName[mesh] + "_mesh";
+    JsonWriter::JsonScope s(w, meshDataName, JsonWriter::CompoundType::Object);
+
+    size_t bufferViewSize = 0;
+    size_t bufferViewOffset = buffer.size();
+
+    string viewName = objectToNodeName[mesh] + "_bufferView";
+    size_t accessorOffset = 0;
+
+    unordered_map<ImMesh::DataStream::Type, string> dataStreamToAccessor;
+
+    // create an accessor for each data stream
+    for (const ImMesh::DataStream& d : mesh->dataStreams)
+    {
+      bufferViewSize += d.data.size();
+      size_t numElems = d.NumElems();
+      size_t ofs = accessorOffset;
+      char name[32];
+      sprintf(name, "Accessor%.5d", (int)accessors.size() + 1);
+
+      auto it = streamToAccessor.find(d.type);
+      if (it == streamToAccessor.end())
+      {
+        // LOG: unknown data stream type
+        continue;
+      }
+
+      const auto& data = it->second;
+      accessors.push_back(Accessor{ name, viewName, ofs, numElems, 0, data.first, data.second, "" });
+      buffer.insert(buffer.end(), d.data.begin(), d.data.end());
+      dataStreamToAccessor[d.type] = name;
+
+      accessorOffset += d.data.size();
+    }
+
+    {
+      // write the bindings
+      JsonWriter::JsonScope s(w, "bindings", JsonWriter::CompoundType::Object);
+      for (auto& kv : dataStreamToAccessor)
+      {
+        w->Emit(streamTypeToString[kv.first], kv.second);
+      }
+    }
+
+    {
+      // write the materialGroups
+      JsonWriter::JsonScope s(w, "materialGroups", JsonWriter::CompoundType::Object);
+      for (const ImMesh::MaterialGroup& m : mesh->materialGroups)
+      {
+        w->Emit("materialId", m.materialId);
+        w->Emit("startIndex", m.startIndex);
+        w->Emit("numIndices", m.numIndices);
+      }
+    }
+
+    bufferViews.push_back(BufferView{"buffer", viewName, bufferViewOffset, bufferViewSize});
   }
 
   buffers.push_back(Buffer{"buffer", "", buffer});
+}
 
+//------------------------------------------------------------------------------
+static void ExportNodes(const ImScene& scene, JsonWriter* w)
+{
+  JsonWriter::JsonScope s(w, "nodes", JsonWriter::CompoundType::Object);
+  ExportNullObjects(scene.nullObjects, w);
+  ExportCameras(scene.cameras, w);
+  ExportLights(scene.lights, w);
+  ExportMeshes(scene.meshes, w);
 }
 
 //------------------------------------------------------------------------------
 static void ExportSceneInfo(const ImScene& scene, JsonWriter* w)
 {
-  vector<ImBaseObject*> allObjects;
-
-  JsonWriter::JsonScope s(w, "scene", JsonWriter::CompoundType::Object);
+  w->Emit("scene", "defaultScene");
+  JsonWriter::JsonScope s(w, "scenes", JsonWriter::CompoundType::Object);
   {
-    unordered_map<string, int> nodeIdx;
+    JsonWriter::JsonScope s(w, "defaultScene", JsonWriter::CompoundType::Object);
 
-    auto& fnAddElem = [&nodeIdx, w, &allObjects](const char* base, ImBaseObject* obj)
     {
-      char name[32];
-      sprintf(name, "%s%.5d", base, ++nodeIdx[base]);
-      objectToNodeName[obj] = name;
-      allObjects.push_back(obj);
-    };
+      JsonWriter::JsonScope s(w, "nodes", JsonWriter::CompoundType::Array);
+      unordered_map<string, int> nodeIdx;
 
-    for (ImBaseObject* obj : scene.nullObjects)
-      fnAddElem("Null", obj);
+      auto& fnAddElem = [&nodeIdx, w](const char* base, ImBaseObject* obj)
+      {
+        char name[32];
+        sprintf(name, "%s%.5d", base, ++nodeIdx[base]);
+        w->EmitArrayElem(name);
+        objectToNodeName[obj] = name;
+      };
 
-    for (ImBaseObject* obj : scene.cameras)
-      fnAddElem("Camera", obj);
+      for (ImBaseObject* obj : scene.nullObjects)
+        fnAddElem("Null", obj);
 
-    for (ImBaseObject* obj : scene.lights)
-      fnAddElem("Light", obj);
+      for (ImBaseObject* obj : scene.cameras)
+        fnAddElem("Camera", obj);
 
-    for (ImBaseObject* obj : scene.meshes)
-      fnAddElem("Mesh", obj);
-  }
+      for (ImBaseObject* obj : scene.lights)
+        fnAddElem("Light", obj);
 
-
-  {
-    JsonWriter::JsonScope s(w, "nodes", JsonWriter::CompoundType::Object);
-    for (ImBaseObject* obj : allObjects)
-    {
-      JsonWriter::JsonScope s(w, objectToNodeName[obj], JsonWriter::CompoundType::Object);
-      vector<string> children;
-      for (ImBaseObject* obj : obj->children)
-        children.push_back(obj->name);
-      w->EmitArray("children", children);
+      for (ImBaseObject* obj : scene.meshes)
+        fnAddElem("Mesh", obj);
     }
   }
 }
 
 //------------------------------------------------------------------------------
-static void ExportMaterials(const vector<ImMaterial*>& materials, JsonWriter* w)
-{
-  JsonWriter::JsonScope s(w, "materials", JsonWriter::CompoundType::Object);
-
-  for (const ImMaterial* material : materials)
-  {
-    JsonWriter::JsonScope s(w, material->name, JsonWriter::CompoundType::Object);
-
-    w->Emit("name", material->name);
-    w->Emit("id", material->id);
-
-    JsonWriter::JsonScope s2(w, "components", JsonWriter::CompoundType::Object);
-
-    for (const ImMaterialComponent& comp : material->components)
-    {
-      JsonWriter::JsonScope s(w, comp.name, JsonWriter::CompoundType::Object);
-      w->EmitArray("color", {comp.color.r, comp.color.g, comp.color.b});
-      if (!comp.texture.empty())
-        w->Emit("texture", comp.texture);
-      w->Emit("brightness", comp.brightness);
-    }
-
-  }
-}
-
-//------------------------------------------------------------------------------
-bool ExportAsJson(const ImScene& scene, const Options& options, SceneStats* stats)
+bool ExportAsJsonGltf(const ImScene& scene, const Options& options, SceneStats* stats)
 {
   JsonWriter w;
   {
     JsonWriter::JsonScope s(&w, JsonWriter::CompoundType::Object);
 
     ExportSceneInfo(scene, &w);
-
-    ExportNullObjects(scene.nullObjects, &w);
-    ExportCameras(scene.cameras, &w);
-    ExportLights(scene.lights, &w);
-    ExportMeshes(scene.meshes, &w);
-    ExportMaterials(scene.materials, &w);
-
-    //ExportNodes(scene, &w);
-    //ExportMeshData(scene.meshes, &w);
+    ExportNodes(scene, &w);
+    ExportMeshData(scene.meshes, &w);
 
     ExportBuffers(options, &w);
   }

@@ -3,14 +3,10 @@
 // magnus.osterlind@gmail.com
 //-----------------------------------------------------------------------------
 
-#include "boba_scene_format.hpp"
-#include "deferred_writer.hpp"
 #include "exporter.hpp"
 #include "melange_helpers.hpp"
-#include "save_scene.hpp"
 #include "arg_parse.hpp"
 #include "exporter_utils.hpp"
-#include "export_misc.hpp"
 #include "json_exporter.hpp"
 
 //-----------------------------------------------------------------------------
@@ -138,7 +134,7 @@ bool ParseFilenames(const vector<string>& args)
   if (remaining < 1)
   {
     printf("Invalid args\n");
-    return 1;
+    return false;
   }
 
   options.inputFilename = MakeCanonical(args[0]);
@@ -157,7 +153,7 @@ bool ParseFilenames(const vector<string>& args)
       // a directory was given, so create the filename from the input file
       string res = FilenameFromInput(options.inputFilename, true);
       if (res.empty())
-        return 1;
+        return false;
 
       options.outputFilename = string(args[curArg]) + '/' + res;
     }
@@ -166,10 +162,31 @@ bool ParseFilenames(const vector<string>& args)
   {
     options.outputFilename = FilenameFromInput(options.inputFilename, false);
     if (options.outputFilename.empty())
-      return 1;
+      return false;
   }
 
   options.logfile = fopen((options.outputFilename + ".log").c_str(), "at");
+
+  // normalize output filename, and capture the base
+  string& s = options.outputFilename;
+  size_t lastSlash = -1;
+  size_t lastDot = -1;
+  for (size_t i = 0; i < s.size(); ++i)
+  {
+    if (s[i] == '\\')
+      s[i] = '/';
+
+    if (s[i] == '/')
+      lastSlash = i;
+    else if (s[i] == '.')
+      lastDot = i;
+  }
+
+  if (lastSlash != -1 && lastDot != -1)
+  {
+    options.outputBase = string(s.data() + lastSlash + 1, lastDot - lastSlash - 1);
+    options.outputPrefix = string(s.data(), lastDot);
+  }
   return true;
 }
 
@@ -248,7 +265,6 @@ int main(int argc, char** argv)
   if (res)
   {
     ExportAsJson(g_scene, options, &stats);
-    //SaveScene(g_scene, options, &stats);
   }
 
   DeleteObj(g_Doc);

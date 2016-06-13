@@ -1,13 +1,23 @@
-#include "im_exporter.hpp"
-#include "exporter_utils.hpp"
-#include "melange_helpers.hpp"
 #include "exporter.hpp"
+#include "exporter_utils.hpp"
+#include "im_exporter.hpp"
+#include "melange_helpers.hpp"
 
 using namespace melange;
 
 //-----------------------------------------------------------------------------
 static const float DEFAULT_NEAR_PLANE = 1.0f;
 static const float DEFAULT_FAR_PLANE = 1000.0f;
+
+static unordered_map<int, string> areaLightShapeToString = {
+  { LIGHT_AREADETAILS_SHAPE_DISC, "disc" },
+  { LIGHT_AREADETAILS_SHAPE_RECTANGLE, "rectangle" },
+  { LIGHT_AREADETAILS_SHAPE_SPHERE, "sphere" },
+  { LIGHT_AREADETAILS_SHAPE_CYLINDER, "cylinder" },
+  { LIGHT_AREADETAILS_SHAPE_CUBE, "cube" },
+  { LIGHT_AREADETAILS_SHAPE_HEMISPHERE, "hemisphere" },
+  { LIGHT_AREADETAILS_SHAPE_LINE, "line" },
+};
 
 //-----------------------------------------------------------------------------
 static void ExportSpline(melange::BaseObject* obj)
@@ -46,11 +56,11 @@ static void ExportSplineChildren(melange::BaseObject* baseObj)
     int type = obj->GetType();
     switch (type)
     {
-    case Ospline:
-    {
-      ExportSpline(obj);
-      break;
-    }
+      case Ospline:
+      {
+        ExportSpline(obj);
+        break;
+      }
     }
   }
 }
@@ -85,18 +95,18 @@ bool melange::AlienNullObjectData::Execute()
 
 //-----------------------------------------------------------------------------
 ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
-  : melangeObj(melangeObj)
-  , parent(g_scene.FindObject(melangeObj->GetUp()))
-  , name(CopyString(melangeObj->GetName()))
-  , id(ImScene::nextObjectId++)
+    : melangeObj(melangeObj)
+    , parent(g_scene.FindObject(melangeObj->GetUp()))
+    , name(CopyString(melangeObj->GetName()))
+    , id(ImScene::nextObjectId++)
 {
   LOG(1, "Exporting: %s\n", name.c_str());
   melange::BaseObject* melangeParent = melangeObj->GetUp();
   if ((melangeParent != nullptr) ^ (parent != nullptr))
   {
     LOG(1,
-      "  Unable to find parent! (%s)\n",
-      melangeParent ? CopyString(melangeParent->GetName()).c_str() : "");
+        "  Unable to find parent! (%s)\n",
+        melangeParent ? CopyString(melangeParent->GetName()).c_str() : "");
     valid = false;
   }
 
@@ -110,7 +120,6 @@ ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
   }
   g_scene.melangeToImObject[melangeObj] = this;
 }
-
 
 //-----------------------------------------------------------------------------
 bool melange::AlienCameraObjectData::Execute()
@@ -126,37 +135,40 @@ bool melange::AlienCameraObjectData::Execute()
   if (projectionType != Pperspective)
   {
     LOG(2,
-      "Skipping camera (%s) with unsupported projection type (%d)\n",
-      name.c_str(),
-      projectionType);
+        "Skipping camera (%s) with unsupported projection type (%d)\n",
+        name.c_str(),
+        projectionType);
     return false;
   }
 
   // Check if the camera is a target camera
   BaseTag* targetTag = baseObj->GetTag(Ttargetexpression);
-  if (!targetTag)
-  {
-    // Not a target camera, so require the parent object to be a null object
-    BaseObject* parent = baseObj->GetUp();
-    bool isNullParent = parent && parent->GetType() == OBJECT_NULL;
-    if (!isNullParent)
-    {
-      LOG(1, "Camera's %s parent isn't a null object!\n", name.c_str());
-      return false;
-    }
-  }
+
+  // NB(magnus): previously we required the parent object as a non-target camera to be a null, but
+  // i have no idea why, so i'm removing that check..
+  //if (!targetTag)
+  //{
+  //  // Not a target camera, so require the parent object to be a null object
+  //  BaseObject* parent = baseObj->GetUp();
+  //  bool isNullParent = parent && parent->GetType() == OBJECT_NULL;
+  //  if (!isNullParent)
+  //  {
+  //    LOG(1, "Camera's %s parent isn't a null object!\n", name.c_str());
+  //    return false;
+  //  }
+  //}
 
   CopyTransform(baseObj->GetMl(), &camera->xformLocal);
   CopyTransform(baseObj->GetMg(), &camera->xformGlobal);
 
   camera->verticalFov = GetFloatParam(baseObj, CAMERAOBJECT_FOV_VERTICAL);
   camera->nearPlane =
-    GetInt32Param(baseObj, CAMERAOBJECT_NEAR_CLIPPING_ENABLE)
-    ? max(DEFAULT_NEAR_PLANE, GetFloatParam(baseObj, CAMERAOBJECT_NEAR_CLIPPING))
-    : DEFAULT_NEAR_PLANE;
+      GetInt32Param(baseObj, CAMERAOBJECT_NEAR_CLIPPING_ENABLE)
+          ? max(DEFAULT_NEAR_PLANE, GetFloatParam(baseObj, CAMERAOBJECT_NEAR_CLIPPING))
+          : DEFAULT_NEAR_PLANE;
   camera->farPlane = GetInt32Param(baseObj, CAMERAOBJECT_FAR_CLIPPING_ENABLE)
-    ? GetFloatParam(baseObj, CAMERAOBJECT_FAR_CLIPPING)
-    : DEFAULT_FAR_PLANE;
+                         ? GetFloatParam(baseObj, CAMERAOBJECT_FAR_CLIPPING)
+                         : DEFAULT_FAR_PLANE;
 
   if (targetTag)
   {
@@ -174,7 +186,6 @@ bool melange::AlienCameraObjectData::Execute()
       return true;
     });
   }
-
 
   g_scene.cameras.push_back(camera.release());
 
@@ -195,7 +206,6 @@ bool melange::AlienLightObjectData::Execute()
   CopyTransform(baseObj->GetMl(), &light->xformLocal);
   CopyTransform(baseObj->GetMg(), &light->xformGlobal);
 
-  light->type = lightType;
   light->color = GetVectorParam<Color>(baseObj, LIGHT_COLOR);
   light->intensity = GetFloatParam(baseObj, LIGHT_BRIGHTNESS);
 
@@ -206,13 +216,33 @@ bool melange::AlienLightObjectData::Execute()
 
   if (lightType == LIGHT_TYPE_OMNI)
   {
+    light->type = ImLight::Type::Omni;
   }
   else if (lightType == LIGHT_TYPE_DISTANT)
   {
+    light->type = ImLight::Type::Distant;
   }
   else if (lightType == LIGHT_TYPE_SPOT)
   {
+    light->type = ImLight::Type::Spot;
     light->outerAngle = GetFloatParam(baseObj, LIGHT_DETAILS_OUTERANGLE);
+  }
+  else if (lightType == LIGHT_TYPE_AREA)
+  {
+    light->type = ImLight::Type::Area;
+    int areaLightShape = GetInt32Param(baseObj, LIGHT_AREADETAILS_SHAPE);
+
+    auto it = areaLightShapeToString.find(areaLightShape);
+    if (it == areaLightShapeToString.end())
+    {
+      LOG(1, "Unsupported area light type: %s (%d)\n", name.c_str(), areaLightShape);
+      return false;
+    }
+
+    light->areaShape = it->second;
+    light->areaSizeX = GetFloatParam(baseObj, LIGHT_AREADETAILS_SIZEX);
+    light->areaSizeY = GetFloatParam(baseObj, LIGHT_AREADETAILS_SIZEY);
+    light->areaSizeZ = GetFloatParam(baseObj, LIGHT_AREADETAILS_SIZEZ);
   }
   else
   {
@@ -239,10 +269,10 @@ Ret AlphabetIndex(const Src& src, int idx)
 {
   switch (idx)
   {
-  case 0: return src.a;
-  case 1: return src.b;
-  case 2: return src.c;
-  case 3: return src.d;
+    case 0: return src.a;
+    case 1: return src.b;
+    case 2: return src.c;
+    case 3: return src.d;
   }
 
   return Ret();
@@ -253,10 +283,10 @@ static int VertexIdFromPoly(const CPolygon& poly, int idx)
 {
   switch (idx)
   {
-  case 0: return poly.a;
-  case 1: return poly.b;
-  case 2: return poly.c;
-  case 3: return poly.d;
+    case 0: return poly.a;
+    case 1: return poly.b;
+    case 2: return poly.c;
+    case 3: return poly.d;
   }
   return -1;
 }
@@ -322,8 +352,7 @@ void Add3Vector3(vector<float>* out, const T& a, const T& b, const T& c)
 };
 
 //-----------------------------------------------------------------------------
-Vector CalcNormal(
-  const Vector& a, const Vector& b, const Vector& c)
+Vector CalcNormal(const Vector& a, const Vector& b, const Vector& c)
 {
   Vector e0 = (b - a);
   e0.Normalize();
@@ -343,7 +372,7 @@ inline bool IsQuad(const T& p)
 
 //-----------------------------------------------------------------------------
 static void CalcBoundingSphere(
-  const Vector* verts, int vertexCount, Vec3f* outCenter, float* outRadius)
+    const Vector* verts, int vertexCount, Vec3f* outCenter, float* outRadius)
 {
   // calc bounding sphere (get center and max radius)
   Vector center(verts[0]);
@@ -379,10 +408,7 @@ static u32 FnvHash(const char* str, u32 d = 0x01000193)
 //-----------------------------------------------------------------------------
 struct FatVertex
 {
-  FatVertex()
-  {
-    memset(this, 0, sizeof(FatVertex));
-  }
+  FatVertex() { memset(this, 0, sizeof(FatVertex)); }
 
   Vector32 pos = Vector32(0, 0, 0);
   Vector32 normal = Vector32(0, 0, 0);
@@ -402,10 +428,7 @@ struct FatVertex
 
   struct Hash
   {
-    size_t operator()(const FatVertex& v) const
-    {
-      return v.GetHash();
-    }
+    size_t operator()(const FatVertex& v) const { return v.GetHash(); }
   };
 
   struct
@@ -414,92 +437,6 @@ struct FatVertex
     mutable u32 hash = 0;
   } meta;
 };
-
-//-----------------------------------------------------------------------------
-static void GroupPolysByMaterial(PolygonObject* obj,
-  unordered_map<AlienMaterial*, vector<int>>* polysByMaterial)
-{
-  // Keep track of which polys we've seen, so we can lump all the unseen ones with the first
-  // material
-  unordered_set<u32> seenPolys;
-
-  AlienMaterial* prevMaterial = nullptr;
-  AlienMaterial* firstMaterial = nullptr;
-
-  // For each material found, check if the following tag is a selection tag, in which
-  // case record which polys belong to it
-  for (BaseTag* btag = obj->GetFirstTag(); btag; btag = btag->GetNext())
-  {
-    // texture tag
-    if (btag->GetType() == Ttexture)
-    {
-      GeData data;
-      prevMaterial = btag->GetParameter(TEXTURETAG_MATERIAL, data)
-        ? (AlienMaterial*)data.GetLink()
-        : NULL;
-      if (!prevMaterial)
-        continue;
-
-      // Mark the first material we find, so we can stick all unselected polys in it
-      if (!firstMaterial)
-        firstMaterial = prevMaterial;
-    }
-
-    // Polygon Selection Tag
-    if (btag->GetType() == Tpolygonselection && obj->GetType() == Opolygon)
-    {
-      // skip this selection tag if we don't have a previous material. i don't like relying things
-      // just appearing in the correct order, but right now i don't know of a better way
-      if (!prevMaterial)
-        continue;
-
-      if (BaseSelect* bs = ((SelectionTag*)btag)->GetBaseSelect())
-      {
-        vector<int>& polysForMaterial = (*polysByMaterial)[prevMaterial];
-        for (int i = 0, e = obj->GetPolygonCount(); i < e; ++i)
-        {
-          if (bs->IsSelected(i))
-          {
-            polysForMaterial.push_back(i);
-            seenPolys.insert(i);
-          }
-        }
-      }
-
-      // reset the previous material flag to avoid double selection tags causing trouble
-      prevMaterial = nullptr;
-    }
-  }
-
-  // if no materials are found, just add them to a dummy material
-  if (!firstMaterial)
-  {
-    vector<int>& polysForMaterial = (*polysByMaterial)[DEFAULT_MATERIAL_PTR];
-    for (int i = 0, e = obj->GetPolygonCount(); i < e; ++i)
-    {
-      polysForMaterial.push_back(i);
-    }
-  }
-  else
-  {
-    // add all the polygons that aren't selected to the first material
-    vector<int>& polysForMaterial = (*polysByMaterial)[firstMaterial];
-    for (int i = 0, e = obj->GetPolygonCount(); i < e; ++i)
-    {
-      if (seenPolys.count(i) == 0)
-        polysForMaterial.push_back(i);
-    }
-  }
-
-  // print polys per material stats.
-  for (auto g : (*polysByMaterial))
-  {
-    AlienMaterial* mat = g.first;
-    const char* materialName =
-      mat == DEFAULT_MATERIAL_PTR ? "<default>" : CopyString(mat->GetName()).c_str();
-    LOG(2, "material: %s, %d polys\n", materialName, (int)g.second.size());
-  }
-}
 
 //-----------------------------------------------------------------------------
 struct FatVertexSupplier
@@ -590,6 +527,92 @@ struct FatVertexSupplier
   vector<FatVertex> fatVerts;
 };
 
+//-----------------------------------------------------------------------------
+static void GroupPolysByMaterial(
+    PolygonObject* obj, unordered_map<AlienMaterial*, vector<int>>* polysByMaterial)
+{
+  // Keep track of which polys we've seen, so we can lump all the unseen ones with the first
+  // material
+  unordered_set<u32> seenPolys;
+
+  AlienMaterial* prevMaterial = nullptr;
+  AlienMaterial* firstMaterial = nullptr;
+
+  // For each material found, check if the following tag is a selection tag, in which
+  // case record which polys belong to it
+  for (BaseTag* btag = obj->GetFirstTag(); btag; btag = btag->GetNext())
+  {
+    // texture tag
+    if (btag->GetType() == Ttexture)
+    {
+      GeData data;
+      prevMaterial =
+          btag->GetParameter(TEXTURETAG_MATERIAL, data) ? (AlienMaterial*)data.GetLink() : NULL;
+      if (!prevMaterial)
+        continue;
+
+      // Mark the first material we find, so we can stick all unselected polys in it
+      if (!firstMaterial)
+        firstMaterial = prevMaterial;
+    }
+
+    // Polygon Selection Tag
+    if (btag->GetType() == Tpolygonselection && obj->GetType() == Opolygon)
+    {
+      // skip this selection tag if we don't have a previous material. i don't like relying things
+      // just appearing in the correct order, but right now i don't know of a better way
+      if (!prevMaterial)
+        continue;
+
+      if (BaseSelect* bs = ((SelectionTag*)btag)->GetBaseSelect())
+      {
+        vector<int>& polysForMaterial = (*polysByMaterial)[prevMaterial];
+        for (int i = 0, e = obj->GetPolygonCount(); i < e; ++i)
+        {
+          if (bs->IsSelected(i))
+          {
+            polysForMaterial.push_back(i);
+            seenPolys.insert(i);
+          }
+        }
+      }
+
+      // reset the previous material flag to avoid double selection tags causing trouble
+      prevMaterial = nullptr;
+    }
+  }
+
+  // if no materials are found, just add them to a dummy material
+  if (!firstMaterial)
+  {
+    vector<int>& polysForMaterial = (*polysByMaterial)[DEFAULT_MATERIAL_PTR];
+    for (int i = 0, e = obj->GetPolygonCount(); i < e; ++i)
+    {
+      polysForMaterial.push_back(i);
+    }
+  }
+  else
+  {
+    // add all the polygons that aren't selected to the first material
+    vector<int>& polysForMaterial = (*polysByMaterial)[firstMaterial];
+    for (int i = 0, e = obj->GetPolygonCount(); i < e; ++i)
+    {
+      if (seenPolys.count(i) == 0)
+        polysForMaterial.push_back(i);
+    }
+  }
+
+  // print polys per material stats.
+  for (auto g : (*polysByMaterial))
+  {
+    AlienMaterial* mat = g.first;
+    const char* materialName =
+        mat == DEFAULT_MATERIAL_PTR ? "<default>" : CopyString(mat->GetName()).c_str();
+    LOG(2, "material: %s, %d polys\n", materialName, (int)g.second.size());
+  }
+}
+
+//-----------------------------------------------------------------------------
 template <typename T>
 void CopyOutDataStream(const vector<T>& data, ImMesh::DataStream::Type type, ImMesh* mesh)
 {
@@ -606,8 +629,8 @@ void CopyOutDataStream(const vector<T>& data, ImMesh::DataStream::Type type, ImM
 
 //-----------------------------------------------------------------------------
 static void CollectVertices(PolygonObject* polyObj,
-  const unordered_map<AlienMaterial*, vector<int>>& polysByMaterial,
-  ImMesh* mesh)
+    const unordered_map<AlienMaterial*, vector<int>>& polysByMaterial,
+    ImMesh* mesh)
 {
   int vertexCount = polyObj->GetPointCount();
   if (!vertexCount)
@@ -620,7 +643,7 @@ static void CollectVertices(PolygonObject* polyObj,
   const CPolygon* polys = polyObj->GetPolygonR();
 
   CalcBoundingSphere(
-    verts, vertexCount, &mesh->boundingSphere.center, &mesh->boundingSphere.radius);
+      verts, vertexCount, &mesh->boundingSphere.center, &mesh->boundingSphere.radius);
 
   FatVertexSupplier fatVtx(polyObj);
   int startIdx = 0;
@@ -681,7 +704,7 @@ static void CollectVertices(PolygonObject* polyObj,
     normalStream.push_back(fatVtx.fatVerts[i].normal);
     if (fatVtx.uvHandle)
     {
-      uvStream.push_back(Vec2{ fatVtx.fatVerts[i].uv.x, fatVtx.fatVerts[i].uv.y });
+      uvStream.push_back(Vec2{fatVtx.fatVerts[i].uv.x, fatVtx.fatVerts[i].uv.y});
     }
   }
 

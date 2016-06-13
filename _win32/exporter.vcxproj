@@ -166,12 +166,11 @@
     <ClCompile Include="..\im_exporter.cpp" />
     <ClCompile Include="..\im_scene.cpp" />
     <ClCompile Include="..\json_exporter.cpp" />
+    <ClCompile Include="..\json_exporter_gltf.cpp" />
     <ClCompile Include="..\melange_helpers.cpp" />
-    <ClCompile Include="..\save_scene.cpp" />
     <ClCompile Include="..\compress\forsythtriangleorderoptimizer.cpp" />
     <ClCompile Include="..\compress\indexbuffercompression.cpp" />
     <ClCompile Include="..\compress\indexbufferdecompression.cpp" />
-    <ClCompile Include="..\deferred_writer.cpp" />
     <ClCompile Include="..\exporter.cpp" />
     <ClCompile Include="..\precompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -183,7 +182,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\arg_parse.hpp" />
-    <ClInclude Include="..\boba_scene_format.hpp" />
     <ClInclude Include="..\compress\forsythtriangleorderoptimizer.h" />
     <ClInclude Include="..\compress\indexbuffercompression.h" />
     <ClInclude Include="..\compress\indexbuffercompressionformat.h" />
@@ -191,17 +189,16 @@
     <ClInclude Include="..\compress\indexcompressionconstants.h" />
     <ClInclude Include="..\compress\readbitstream.h" />
     <ClInclude Include="..\compress\writebitstream.h" />
-    <ClInclude Include="..\deferred_writer.hpp" />
     <ClInclude Include="..\exporter.hpp" />
     <ClInclude Include="..\exporter_types.hpp" />
     <ClInclude Include="..\exporter_utils.hpp" />
     <ClInclude Include="..\im_exporter.hpp" />
     <ClInclude Include="..\im_scene.hpp" />
     <ClInclude Include="..\json_exporter.hpp" />
+    <ClInclude Include="..\json_exporter_gltf.hpp" />
     <ClInclude Include="..\json_writer.hpp" />
     <ClInclude Include="..\melange_helpers.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
-    <ClInclude Include="..\save_scene.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -61,6 +61,20 @@ struct JsonWriter
     res += "null";
   }
 
+  void Emit(u32 value)
+  {
+    char buf[32];
+    sprintf(buf, "%d", value);
+    res += buf;
+  }
+
+  void Emit(int value)
+  {
+    char buf[32];
+    sprintf(buf, "%d", value);
+    res += buf;
+  }
+
   void Emit(int64_t value)
   {
     char buf[32];
@@ -114,6 +128,12 @@ struct JsonWriter
       EmitArrayElem(t);
     }
     End();
+  }
+
+  template <typename T>
+  void EmitArray(const string& key, const initializer_list<T>& elems)
+  {
+    return EmitArray(key, vector<T>(elems));
   }
 
   template <typename T>

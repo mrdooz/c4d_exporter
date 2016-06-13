@@ -59,15 +59,38 @@ struct ImBaseObject
 //------------------------------------------------------------------------------
 struct ImLight : public ImBaseObject
 {
+  enum class Type
+  {
+    Omni,
+    Spot,
+    Distant,
+    Area,
+  };
+
   ImLight(melange::BaseObject* melangeObj) : ImBaseObject(melangeObj) {}
-  int type;
+
+  Type type;
   Color color;
   float intensity;
 
   int falloffType;
   float falloffRadius;
 
-  float outerAngle = 0.0f;
+  union
+  {
+    struct
+    {
+      float outerAngle;
+    };
+
+    struct 
+    {
+      string areaShape;
+      float areaSizeX;
+      float areaSizeY;
+      float areaSizeZ;
+    };
+  };
 };
 
 //------------------------------------------------------------------------------
