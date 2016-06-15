@@ -687,7 +687,7 @@ static void CollectVertices(PolygonObject* polyObj,
         startIdx += 3;
       }
     }
-    mg.numIndices = startIdx - mg.startIndex;
+    mg.indexCount = startIdx - mg.startIndex;
     mesh->materialGroups.push_back(mg);
   }
 

@@ -256,7 +256,7 @@ static void ExportMeshData(const vector<ImMesh*>& meshes, JsonWriter* w)
       {
         w->Emit("materialId", m.materialId);
         w->Emit("startIndex", m.startIndex);
-        w->Emit("numIndices", m.numIndices);
+        w->Emit("indexCount", m.indexCount);
       }
     }
 

@@ -150,7 +150,7 @@ struct ImMesh : public ImBaseObject
   {
     int materialId;
     u32 startIndex = ~0u;
-    u32 numIndices = ~0u;
+    u32 indexCount = ~0u;
   };
 
   struct DataStream

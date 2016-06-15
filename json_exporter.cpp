@@ -1,16 +1,8 @@
 #include "json_exporter.hpp"
 #include "json_writer.hpp"
 
-struct Buffer
-{
-  string name;
-  string path;
-  vector<char> data;
-};
-
 struct BufferView
 {
-  string buffer;
   string name;
   size_t offset;
   size_t size;
@@ -23,6 +15,7 @@ struct Accessor
   size_t offset;
   size_t count;
   size_t stride;
+  size_t elementSize;
 
   string type;
   string componentType;
@@ -35,15 +28,21 @@ static unordered_map<ImMesh*, int> meshCountByMesh;
 
 static vector<BufferView> bufferViews;
 static vector<Accessor> accessors;
-static vector<Buffer> buffers;
 static vector<char> buffer;
 
-static unordered_map<ImMesh::DataStream::Type, pair<string, string>> streamToAccessor = {
-  { ImMesh::DataStream::Type::Index16, make_pair("u16", "scalar") },
-  { ImMesh::DataStream::Type::Index32, make_pair("u32", "scalar") },
-  { ImMesh::DataStream::Type::Pos, make_pair("r32", "vec3") },
-  { ImMesh::DataStream::Type::Normal, make_pair("r32", "vec3") },
-  { ImMesh::DataStream::Type::UV, make_pair("r32", "vec2") },
+struct AccessorData
+{
+  const char* type;
+  const char* componentType;
+  int elementSize;
+};
+
+static unordered_map<ImMesh::DataStream::Type, AccessorData> streamToAccessor = {
+  { ImMesh::DataStream::Type::Index16, AccessorData{"u16", "scalar", 2} },
+  { ImMesh::DataStream::Type::Index32, AccessorData{"u32", "scalar", 4} },
+  { ImMesh::DataStream::Type::Pos, AccessorData{"r32", "vec3", 12} },
+  { ImMesh::DataStream::Type::Normal, AccessorData{"r32", "vec3", 12} },
+  { ImMesh::DataStream::Type::UV, AccessorData{"r32", "vec2", 8} },
 };
 
 static unordered_map<ImMesh::DataStream::Type, string> streamTypeToString = {
@@ -67,25 +66,13 @@ static void ExportBuffers(const Options& options, JsonWriter* w)
 #define EMIT(attr) w->Emit(#attr, x.attr)
 
   {
-    JsonWriter::JsonScope s(w, "buffers", JsonWriter::CompoundType::Object);
-
-    for (Buffer& x : buffers)
-    {
-      x.path = options.outputBase + ".dat";
-
-      JsonWriter::JsonScope s(w, x.name, JsonWriter::CompoundType::Object);
-      EMIT(name);
-      EMIT(path);
-    }
-  }
-
-  {
     JsonWriter::JsonScope s(w, "bufferViews", JsonWriter::CompoundType::Object);
+
+    w->Emit("buffer", options.outputBase + ".dat");
 
     for (const BufferView& x : bufferViews)
     {
       JsonWriter::JsonScope s(w, x.name, JsonWriter::CompoundType::Object);
-      EMIT(buffer);
       EMIT(offset);
       EMIT(size);
     }
@@ -101,6 +88,7 @@ static void ExportBuffers(const Options& options, JsonWriter* w)
       EMIT(count);
       if (x.stride)
         EMIT(stride);
+      EMIT(elementSize);
       EMIT(type);
       EMIT(componentType);
       if (!x.compression.empty())
@@ -149,6 +137,11 @@ static void ExportCameras(const vector<ImCamera*>& cameras, JsonWriter* w)
   {
     JsonWriter::JsonScope s(w, objectToNodeName[cam], JsonWriter::CompoundType::Object);
     ExportBase(cam, w);
+
+    if (cam->targetObj)
+    {
+      w->Emit("type", "target");
+    }
   }
 }
 
@@ -207,7 +200,8 @@ static void ExportMeshData(ImMesh*mesh, JsonWriter* w)
     }
 
     const auto& data = it->second;
-    accessors.push_back(Accessor{ name, viewName, ofs, numElems, 0, data.first, data.second, "" });
+    accessors.push_back(Accessor{
+        name, viewName, ofs, numElems, 0, data.elementSize, data.type, data.componentType, ""});
     buffer.insert(buffer.end(), d.data.begin(), d.data.end());
     dataStreamToAccessor[d.type] = name;
 
@@ -231,11 +225,11 @@ static void ExportMeshData(ImMesh*mesh, JsonWriter* w)
       JsonWriter::JsonScope s(w, JsonWriter::CompoundType::Object);
       w->Emit("materialId", m.materialId);
       w->Emit("startIndex", m.startIndex);
-      w->Emit("numIndices", m.numIndices);
+      w->Emit("indexCount", m.indexCount);
     }
   }
 
-  bufferViews.push_back(BufferView{ "buffer", viewName, bufferViewOffset, bufferViewSize });
+  bufferViews.push_back(BufferView{ viewName, bufferViewOffset, bufferViewSize });
 }
 
 //------------------------------------------------------------------------------
@@ -249,8 +243,6 @@ static void ExportMeshes(const vector<ImMesh*>& meshes, JsonWriter* w)
     ExportBase(mesh, w);
     ExportMeshData(mesh, w);
   }
-
-  buffers.push_back(Buffer{"buffer", "", buffer});
 
 }
 
@@ -339,9 +331,6 @@ bool ExportAsJson(const ImScene& scene, const Options& options, SceneStats* stat
     ExportMeshes(scene.meshes, &w);
     ExportMaterials(scene.materials, &w);
 
-    //ExportNodes(scene, &w);
-    //ExportMeshData(scene.meshes, &w);
-
     ExportBuffers(options, &w);
   }
 
@@ -352,13 +341,12 @@ bool ExportAsJson(const ImScene& scene, const Options& options, SceneStats* stat
     fclose(f);
   }
 
-  if (buffers.size() > 0)
+  if (buffer.size() > 0)
   {
     f = fopen(string(options.outputPrefix + ".dat").c_str(), "wb");
     if (f)
     {
-      const vector<char>& buf = buffers.front().data;
-      fwrite(buf.data(), buf.size(), 1, f);
+      fwrite(buffer.data(), buffer.size(), 1, f);
       fclose(f);
     }
   }
