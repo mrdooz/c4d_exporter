@@ -109,6 +109,7 @@ static void ExportBase(const ImBaseObject* obj, JsonWriter* w)
     JsonWriter::JsonScope s(w, name, JsonWriter::CompoundType::Object);
     w->EmitArray("pos", { xform.pos.x, xform.pos.y, xform.pos.z });
     w->EmitArray("rot", { xform.rot.x, xform.rot.y, xform.rot.z });
+    w->EmitArray("quat", { xform.quat.x, xform.quat.y, xform.quat.z, xform.quat.w });
     w->EmitArray("scale", { xform.scale.x, xform.scale.y, xform.scale.z });
   };
 

@@ -5,6 +5,13 @@
 
 using namespace melange;
 
+/*
+
+  for reading keyframes:
+  http://www.plugincafe.com/forum/forum_posts.asp?TID=10446
+
+*/
+
 //-----------------------------------------------------------------------------
 static const float DEFAULT_NEAR_PLANE = 1.0f;
 static const float DEFAULT_FAR_PLANE = 1000.0f;
@@ -372,7 +379,7 @@ inline bool IsQuad(const T& p)
 
 //-----------------------------------------------------------------------------
 static void CalcBoundingSphere(
-    const Vector* verts, int vertexCount, Vec3f* outCenter, float* outRadius)
+    const Vector* verts, int vertexCount, Vec3* outCenter, float* outRadius)
 {
   // calc bounding sphere (get center and max radius)
   Vector center(verts[0]);

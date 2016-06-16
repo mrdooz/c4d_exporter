@@ -4,7 +4,7 @@
 //------------------------------------------------------------------------------
 struct ImSphere
 {
-  Vec3<float> center;
+  Vec3 center;
   float radius;
 };
 
@@ -32,10 +32,10 @@ struct ImTrack
 //------------------------------------------------------------------------------
 struct ImTransform
 {
-  Vec3f pos;
-  // TODO(magnus): convert rot to quat..
-  Vec3f rot;
-  Vec3f scale;
+  Vec3 pos;
+  Vec3 rot;
+  Vec4 quat;
+  Vec3 scale;
 };
 
 //------------------------------------------------------------------------------

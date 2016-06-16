@@ -1,6 +1,7 @@
 #include "exporter_utils.hpp"
 #include "exporter.hpp"
 #include "melange_helpers.hpp"
+#include <c4d_quaternion.h>
 
 IdGenerator g_ObjectId(0);
 IdGenerator g_MaterialId(1);
@@ -9,8 +10,14 @@ unordered_map<int, melange::BaseMaterial*> g_MaterialIdToObj;
 //-----------------------------------------------------------------------------
 void CopyTransform(const melange::Matrix& mtx, ImTransform* xform)
 {
+  melange::Quaternion quat;
+  quat.SetHPB(melange::MatrixToHPB(mtx, melange::ROTATIONORDER_HPB));
+
   xform->pos = mtx.off;
   xform->rot = melange::MatrixToHPB(mtx, melange::ROTATIONORDER_HPB);
+
+  // NB: negating the rotation angle
+  xform->quat = Vec4{quat.v.x, quat.v.y, quat.v.z, -quat.w};
   xform->scale = melange::Vector(Len(mtx.v1), Len(mtx.v2), Len(mtx.v3));
 }
 

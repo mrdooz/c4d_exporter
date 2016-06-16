@@ -7,19 +7,22 @@ struct Vec2
 };
 
 //------------------------------------------------------------------------------
-template <typename T>
 struct Vec3
 {
-  template <typename U>
-  Vec3(const U& v) : x(v.x), y(v.y), z(v.z)
+  template <typename T>
+  Vec3(const T& v) : x(v.x), y(v.y), z(v.z)
   {
   }
-  Vec3(T x, T y, T z) : x(x), y(y), z(z) {}
+  Vec3(float x, float y, float z) : x(x), y(y), z(z) {}
   Vec3() {}
-  T x, y, z;
+  float x, y, z;
 };
 
-typedef Vec3<float> Vec3f;
+//------------------------------------------------------------------------------
+struct Vec4
+{
+  float x, y, z, w;
+};
 
 //------------------------------------------------------------------------------
 struct Color
