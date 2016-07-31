@@ -166,7 +166,6 @@
     <ClCompile Include="..\im_exporter.cpp" />
     <ClCompile Include="..\im_scene.cpp" />
     <ClCompile Include="..\json_exporter.cpp" />
-    <ClCompile Include="..\json_exporter_gltf.cpp" />
     <ClCompile Include="..\melange_helpers.cpp" />
     <ClCompile Include="..\compress\forsythtriangleorderoptimizer.cpp" />
     <ClCompile Include="..\compress\indexbuffercompression.cpp" />
@@ -195,7 +194,6 @@
     <ClInclude Include="..\im_exporter.hpp" />
     <ClInclude Include="..\im_scene.hpp" />
     <ClInclude Include="..\json_exporter.hpp" />
-    <ClInclude Include="..\json_exporter_gltf.hpp" />
     <ClInclude Include="..\json_writer.hpp" />
     <ClInclude Include="..\melange_helpers.hpp" />
     <ClInclude Include="..\precompiled.hpp" />

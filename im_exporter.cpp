@@ -15,15 +15,16 @@ using namespace melange;
 //-----------------------------------------------------------------------------
 static const float DEFAULT_NEAR_PLANE = 1.0f;
 static const float DEFAULT_FAR_PLANE = 1000.0f;
+static AlienMaterial* DEFAULT_MATERIAL_PTR = nullptr;
 
 static unordered_map<int, string> areaLightShapeToString = {
-  { LIGHT_AREADETAILS_SHAPE_DISC, "disc" },
-  { LIGHT_AREADETAILS_SHAPE_RECTANGLE, "rectangle" },
-  { LIGHT_AREADETAILS_SHAPE_SPHERE, "sphere" },
-  { LIGHT_AREADETAILS_SHAPE_CYLINDER, "cylinder" },
-  { LIGHT_AREADETAILS_SHAPE_CUBE, "cube" },
-  { LIGHT_AREADETAILS_SHAPE_HEMISPHERE, "hemisphere" },
-  { LIGHT_AREADETAILS_SHAPE_LINE, "line" },
+    {LIGHT_AREADETAILS_SHAPE_DISC, "disc"},
+    {LIGHT_AREADETAILS_SHAPE_RECTANGLE, "rectangle"},
+    {LIGHT_AREADETAILS_SHAPE_SPHERE, "sphere"},
+    {LIGHT_AREADETAILS_SHAPE_CYLINDER, "cylinder"},
+    {LIGHT_AREADETAILS_SHAPE_CUBE, "cube"},
+    {LIGHT_AREADETAILS_SHAPE_HEMISPHERE, "hemisphere"},
+    {LIGHT_AREADETAILS_SHAPE_LINE, "line"},
 };
 
 //-----------------------------------------------------------------------------
@@ -118,7 +119,7 @@ ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
   }
 
   // add the object to its parent's children
-  if (melangeParent)
+  if (melangeParent && parent)
   {
     g_deferredFunctions.push_back([this]() {
       parent->children.push_back(this);
@@ -153,7 +154,7 @@ bool melange::AlienCameraObjectData::Execute()
 
   // NB(magnus): previously we required the parent object as a non-target camera to be a null, but
   // i have no idea why, so i'm removing that check..
-  //if (!targetTag)
+  // if (!targetTag)
   //{
   //  // Not a target camera, so require the parent object to be a null object
   //  BaseObject* parent = baseObj->GetUp();
@@ -262,7 +263,6 @@ bool melange::AlienLightObjectData::Execute()
   return true;
 }
 
-static AlienMaterial* DEFAULT_MATERIAL_PTR = nullptr;
 //-----------------------------------------------------------------------------
 template <typename Dst, typename Src>
 Dst Vector3Coerce(const Src& src)
@@ -378,13 +378,24 @@ inline bool IsQuad(const T& p)
 }
 
 //-----------------------------------------------------------------------------
-static void CalcBoundingSphere(
-    const Vector* verts, int vertexCount, Vec3* outCenter, float* outRadius)
+static void CalcBoundingVolumes(const Vector* verts, int vertexCount, ImSphere* sphere, ImAABB* aabb)
 {
   // calc bounding sphere (get center and max radius)
   Vector center(verts[0]);
+  Vector minValue(verts[0]);
+  Vector maxValue(verts[0]);
+
   for (int i = 1; i < vertexCount; ++i)
   {
+    Vector v = verts[i];
+    minValue.x = min(minValue.x, v.x);
+    minValue.y = min(minValue.y, v.y);
+    minValue.z = min(minValue.z, v.z);
+
+    maxValue.x = max(maxValue.x, v.x);
+    maxValue.y = max(maxValue.y, v.y);
+    maxValue.z = max(maxValue.z, v.z);
+
     center += verts[i];
   }
   center /= vertexCount;
@@ -396,9 +407,10 @@ static void CalcBoundingSphere(
     radius = max(radius, cand);
   }
 
-  *outCenter = center;
-  *outRadius = sqrtf(radius);
+  *sphere = {center, sqrtf(radius)};
+  *aabb = {(minValue + maxValue) / 2, (maxValue - minValue) / 2};
 }
+  
 
 //-----------------------------------------------------------------------------
 static u32 FnvHash(const char* str, u32 d = 0x01000193)
@@ -649,8 +661,7 @@ static void CollectVertices(PolygonObject* polyObj,
   const Vector* verts = polyObj->GetPointR();
   const CPolygon* polys = polyObj->GetPolygonR();
 
-  CalcBoundingSphere(
-      verts, vertexCount, &mesh->boundingSphere.center, &mesh->boundingSphere.radius);
+  CalcBoundingVolumes(verts, vertexCount, &mesh->boundingSphere, &mesh->aabb);
 
   FatVertexSupplier fatVtx(polyObj);
   int startIdx = 0;

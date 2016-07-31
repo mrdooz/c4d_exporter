@@ -60,7 +60,7 @@ string FilenameFromInput(const string& inputFilename, bool stripPath)
       const char* slash = strrchr(ff, '/');
       startPos = slash ? slash - ff + 1 : 0;
     }
-    return inputFilename.substr(startPos, lenToDot - startPos) + ".boba";
+    return inputFilename.substr(startPos, lenToDot - startPos) + ".json";
   }
 
   printf("Invalid input filename given: %s\n", inputFilename.c_str());
@@ -121,76 +121,6 @@ void ExportAnimations()
 }
 
 //-----------------------------------------------------------------------------
-bool ParseFilenames(const vector<string>& args)
-{
-  int curArg = 0;
-  int remaining = (int)args.size();
-
-  const auto& step = [&curArg, &remaining](int steps) {
-    curArg += steps;
-    remaining -= steps;
-  };
-
-  if (remaining < 1)
-  {
-    printf("Invalid args\n");
-    return false;
-  }
-
-  options.inputFilename = MakeCanonical(args[0]);
-  step(1);
-
-  // create output file
-  if (remaining == 1)
-  {
-    // check if the remaining argument is a file name, or just a directory
-    if (strstr(args[curArg].c_str(), "boba") != nullptr)
-    {
-      options.outputFilename = args[curArg];
-    }
-    else
-    {
-      // a directory was given, so create the filename from the input file
-      string res = FilenameFromInput(options.inputFilename, true);
-      if (res.empty())
-        return false;
-
-      options.outputFilename = string(args[curArg]) + '/' + res;
-    }
-  }
-  else
-  {
-    options.outputFilename = FilenameFromInput(options.inputFilename, false);
-    if (options.outputFilename.empty())
-      return false;
-  }
-
-  options.logfile = fopen((options.outputFilename + ".log").c_str(), "at");
-
-  // normalize output filename, and capture the base
-  string& s = options.outputFilename;
-  size_t lastSlash = -1;
-  size_t lastDot = -1;
-  for (size_t i = 0; i < s.size(); ++i)
-  {
-    if (s[i] == '\\')
-      s[i] = '/';
-
-    if (s[i] == '/')
-      lastSlash = i;
-    else if (s[i] == '.')
-      lastDot = i;
-  }
-
-  if (lastSlash != -1 && lastDot != -1)
-  {
-    options.outputBase = string(s.data() + lastSlash + 1, lastDot - lastSlash - 1);
-    options.outputPrefix = string(s.data(), lastDot);
-  }
-  return true;
-}
-
-//-----------------------------------------------------------------------------
 void CollectAnimationTracks()
 {
   for (melange::BaseObject* obj = g_Doc->GetFirstObject(); obj; obj = obj->GetNext())
@@ -207,6 +137,7 @@ int main(int argc, char** argv)
   parser.AddFlag(nullptr, "compress-indices", &options.compressIndices);
   parser.AddFlag(nullptr, "optimize-indices", &options.optimizeIndices);
   parser.AddIntArgument(nullptr, "loglevel", &options.loglevel);
+  parser.AddStringArgument("o", nullptr, &options.outputDirectory);
 
   if (!parser.Parse(argc - 1, argv + 1))
   {
@@ -214,98 +145,167 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  if (!ParseFilenames(parser.positional))
+  // the positional argument is a filename glob
+  if (parser.positional.empty())
   {
-    fprintf(stderr, "Error parsing filenames");
+    printf("No filename given.\n");
     return 1;
   }
 
-  time_t startTime = time(0);
-  struct tm* now = localtime(&startTime);
-
-  LOG(1,
-      "==] STARTING [=================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n%s -> "
-      "%s\n",
-      now->tm_year + 1900,
-      now->tm_mon + 1,
-      now->tm_mday,
-      now->tm_hour,
-      now->tm_min,
-      now->tm_sec,
-      options.inputFilename.c_str(),
-      options.outputFilename.c_str());
-
-  g_Doc = NewObj(melange::AlienBaseDocument);
-  g_File = NewObj(melange::HyperFile);
-
-  if (!g_File->Open(DOC_IDENT, options.inputFilename.c_str(), melange::FILEOPEN_READ))
-    return 1;
-
-  if (!g_Doc->ReadObject(g_File, true))
-    return 1;
-
-  g_File->Close();
-
-  CollectAnimationTracks();
-  CollectMaterials(g_Doc);
-  CollectMaterials2(g_Doc);
-  g_Doc->CreateSceneFromC4D();
-
-  bool res = true;
-  for (auto& fn : g_deferredFunctions)
+  WIN32_FIND_DATAA findData;
+  const char* glob = parser.positional.front().c_str();
+  HANDLE h = FindFirstFileA(glob, &findData);
+  if (h == INVALID_HANDLE_VALUE)
   {
-    res &= fn();
-    if (!res)
+    printf("Invalid glob: %s\n", glob);
+    return 1;
+  }
+
+  while (true)
+  {
+    const char* filename = &findData.cFileName[0];
+    string outputFilename = options.outputDirectory + string("/") + FilenameFromInput(filename, false);
+
+    // normalize input directory
+    for (char* ptr = (char*)glob; *ptr; ++ptr)
+    {
+      if (*ptr == '\\')
+        *ptr = '/';
+    }
+
+    // get input dir
+    const char* lastInputSlash = strrchr(glob, '/');
+    string inputDir(glob, lastInputSlash - glob + 1);
+    options.inputFilename = inputDir + filename;
+
+    // normalize output filename, and capture the base
+    size_t lastSlash = -1;
+    size_t lastDot = -1;
+    for (size_t i = 0; i < outputFilename.size(); ++i)
+    {
+      if (outputFilename[i] == '\\')
+        outputFilename[i] = '/';
+
+      if (outputFilename[i] == '/')
+        lastSlash = i;
+      else if (outputFilename[i] == '.')
+        lastDot = i;
+    }
+
+    if (lastSlash != -1 && lastDot != -1)
+    {
+      options.outputBase = string(outputFilename.data() + lastSlash + 1, lastDot - lastSlash - 1);
+      options.outputPrefix = string(outputFilename.data(), lastDot);
+    }
+
+    // skip the file if the output file is older than the input
+    struct stat statInput;
+    struct stat statOutput;
+    bool processFile = true;
+    if (stat(options.inputFilename.c_str(), &statInput) == 0
+        && stat(outputFilename.c_str(), &statOutput) == 0)
+    {
+      processFile = statInput.st_mtime > statOutput.st_mtime;
+    }
+
+    if (processFile)
+    {
+      options.logfile = fopen((outputFilename + ".log").c_str(), "at");
+
+      time_t startTime = time(0);
+      struct tm* now = localtime(&startTime);
+
+      LOG(1,
+        "==] STARTING [=================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n%s -> "
+        "%s\n",
+        now->tm_year + 1900,
+        now->tm_mon + 1,
+        now->tm_mday,
+        now->tm_hour,
+        now->tm_min,
+        now->tm_sec,
+        options.inputFilename.c_str(),
+        outputFilename.c_str());
+
+      g_Doc = NewObj(melange::AlienBaseDocument);
+      g_File = NewObj(melange::HyperFile);
+
+      if (!g_File->Open(DOC_IDENT, options.inputFilename.c_str(), melange::FILEOPEN_READ))
+        return 1;
+
+      if (!g_Doc->ReadObject(g_File, true))
+        return 1;
+
+      g_File->Close();
+
+      CollectAnimationTracks();
+      CollectMaterials(g_Doc);
+      CollectMaterials2(g_Doc);
+      g_Doc->CreateSceneFromC4D();
+
+      bool res = true;
+      for (auto& fn : g_deferredFunctions)
+      {
+        res &= fn();
+        if (!res)
+          break;
+      }
+
+      ExportAnimations();
+
+      SceneStats stats;
+      if (res)
+      {
+        ExportAsJson(g_scene, options, &stats);
+      }
+
+      DeleteObj(g_Doc);
+      DeleteObj(g_File);
+
+      LOG(2,
+        "--> stats: \n"
+        "    null object size: %.2f kb\n"
+        "    camera object size: %.2f kb\n"
+        "    mesh object size: %.2f kb\n"
+        "    light object size: %.2f kb\n"
+        "    material object size: %.2f kb\n"
+        "    spline object size: %.2f kb\n"
+        "    animation object size: %.2f kb\n"
+        "    data object size: %.2f kb\n",
+        (float)stats.nullObjectSize / 1024,
+        (float)stats.cameraSize / 1024,
+        (float)stats.meshSize / 1024,
+        (float)stats.lightSize / 1024,
+        (float)stats.materialSize / 1024,
+        (float)stats.splineSize / 1024,
+        (float)stats.animationSize / 1024,
+        (float)stats.dataSize / 1024);
+
+      time_t endTime = time(0);
+      now = localtime(&endTime);
+
+      LOG(1,
+        "==] DONE [=====================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n",
+        now->tm_year + 1900,
+        now->tm_mon + 1,
+        now->tm_mday,
+        now->tm_hour,
+        now->tm_min,
+        now->tm_sec);
+
+      if (options.logfile)
+        fclose(options.logfile);
+    }
+
+    if (!FindNextFileA(h, &findData))
       break;
   }
 
-  ExportAnimations();
-
-  SceneStats stats;
-  if (res)
-  {
-    ExportAsJson(g_scene, options, &stats);
-  }
-
-  DeleteObj(g_Doc);
-  DeleteObj(g_File);
-
-  LOG(2,
-      "--> stats: \n"
-      "    null object size: %.2f kb\n"
-      "    camera object size: %.2f kb\n"
-      "    mesh object size: %.2f kb\n"
-      "    light object size: %.2f kb\n"
-      "    material object size: %.2f kb\n"
-      "    spline object size: %.2f kb\n"
-      "    animation object size: %.2f kb\n"
-      "    data object size: %.2f kb\n",
-      (float)stats.nullObjectSize / 1024,
-      (float)stats.cameraSize / 1024,
-      (float)stats.meshSize / 1024,
-      (float)stats.lightSize / 1024,
-      (float)stats.materialSize / 1024,
-      (float)stats.splineSize / 1024,
-      (float)stats.animationSize / 1024,
-      (float)stats.dataSize / 1024);
-
-  time_t endTime = time(0);
-  now = localtime(&endTime);
-
-  LOG(1,
-      "==] DONE [=====================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n",
-      now->tm_year + 1900,
-      now->tm_mon + 1,
-      now->tm_mday,
-      now->tm_hour,
-      now->tm_min,
-      now->tm_sec);
-
-  if (options.logfile)
-    fclose(options.logfile);
+  FindClose(h);
 
   if (IsDebuggerPresent())
   {
+    printf("==] esc to quit [==\n");
     while (!GetAsyncKeyState(VK_ESCAPE))
       continue;
   }

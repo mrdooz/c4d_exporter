@@ -241,6 +241,22 @@ static void ExportMeshes(const vector<ImMesh*>& meshes, JsonWriter* w)
   for (ImMesh* mesh : meshes)
   {
     JsonWriter::JsonScope s(w, objectToNodeName[mesh], JsonWriter::CompoundType::Object);
+
+    {
+      JsonWriter::JsonScope s(w, "bounding_sphere", JsonWriter::CompoundType::Object);
+      w->Emit("radius", mesh->boundingSphere.radius);
+      auto& center = mesh->boundingSphere.center;
+      w->EmitArray("center", {center.x, center.y, center.z});
+    }
+
+    {
+      JsonWriter::JsonScope s(w, "bounding_box", JsonWriter::CompoundType::Object);
+      auto& center = mesh->aabb.center;
+      auto& extents = mesh->aabb.extents;
+      w->EmitArray("center", { center.x, center.y, center.z });
+      w->EmitArray("extents", { extents.x, extents.y, extents.z });
+    }
+
     ExportBase(mesh, w);
     ExportMeshData(mesh, w);
   }

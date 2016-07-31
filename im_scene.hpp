@@ -9,6 +9,13 @@ struct ImSphere
 };
 
 //------------------------------------------------------------------------------
+struct ImAABB
+{
+  Vec3 center;
+  Vec3 extents;
+};
+
+//------------------------------------------------------------------------------
 struct ImKeyframe
 {
   int frame;
@@ -178,6 +185,7 @@ struct ImMesh : public ImBaseObject
   vector<u32> selectedEdges;
 
   ImSphere boundingSphere;
+  ImAABB aabb;
 };
 
 //------------------------------------------------------------------------------
@@ -192,6 +200,8 @@ struct ImScene
   vector<ImMaterial*> materials;
   vector<ImSpline*> splines;
   unordered_map<melange::BaseObject*, ImBaseObject*> melangeToImObject;
+
+  ImSphere boundingSphere;
 
   static u32 nextObjectId;
 };

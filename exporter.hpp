@@ -15,7 +15,7 @@ namespace melange
 struct Options
 {
   string inputFilename;
-  string outputFilename;
+  string outputDirectory;
   // c:/tjong/bla.1, base = 'bla', prefix = 'c:/tjong/bla'
   string outputBase;
   string outputPrefix;

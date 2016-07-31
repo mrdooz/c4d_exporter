@@ -34,7 +34,7 @@ struct ArgParse
       BaseHandler* handler = nullptr;
       for (int i = 0; i < (int)handlers.size(); ++i)
       {
-        if (cmd == handlers[i]->longName || cmd == handlers[i]->shortName)
+        if (cmd == "--" + handlers[i]->longName || cmd == "-" + handlers[i]->shortName)
         {
           handler = handlers[i];
           break;

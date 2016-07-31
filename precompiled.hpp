@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #include <vector>
 #include <deque>
