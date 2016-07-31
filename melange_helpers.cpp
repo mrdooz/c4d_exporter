@@ -1,5 +1,5 @@
-#include "melange_helpers.hpp"
 #include "im_exporter.hpp"
+#include "melange_helpers.hpp"
 
 using namespace melange;
 
@@ -66,17 +66,17 @@ NodeData* AllocAlienObjectData(Int32 id, Bool& known)
   switch (id)
   {
     // supported element types
-  case Opolygon: data = NewObj(AlienPolygonObjectData); break;
-  case Ocamera: data = NewObj(AlienCameraObjectData); break;
-  case Onull: data = NewObj(AlienNullObjectData); break;
-  case Olight: data = NewObj(AlienLightObjectData); break;
-  case Opoint: data = NewObj(AlienPointObjectData); break;
-  case Osphere: data = NewObj(AlienPrimitiveObjectData); break;
-  case Ocube: data = NewObj(AlienPrimitiveObjectData); break;
-  case Oplane: data = NewObj(AlienPrimitiveObjectData); break;
-  case Ocone: data = NewObj(AlienPrimitiveObjectData); break;
-  case Otorus: data = NewObj(AlienPrimitiveObjectData); break;
-  case Ocylinder: data = NewObj(AlienPrimitiveObjectData); break;
+    case Opolygon: data = NewObj(AlienPolygonObjectData); break;
+    case Ocamera: data = NewObj(AlienCameraObjectData); break;
+    case Onull: data = NewObj(AlienNullObjectData); break;
+    case Olight: data = NewObj(AlienLightObjectData); break;
+    case Opoint: data = NewObj(AlienPointObjectData); break;
+    case Osphere: data = NewObj(AlienPrimitiveObjectData); break;
+    case Ocube: data = NewObj(AlienPrimitiveObjectData); break;
+    case Oplane: data = NewObj(AlienPrimitiveObjectData); break;
+    case Ocone: data = NewObj(AlienPrimitiveObjectData); break;
+    case Otorus: data = NewObj(AlienPrimitiveObjectData); break;
+    case Ocylinder: data = NewObj(AlienPrimitiveObjectData); break;
   }
 
   known = !!data;
@@ -188,23 +188,23 @@ static void PrintAnimInfo(BaseList2D* bl)
     // CTrack type
     switch (ct->GetTrackCategory())
     {
-    case PSEUDO_VALUE: printf("   VALUE - Track found!\n"); break;
+      case PSEUDO_VALUE: printf("   VALUE - Track found!\n"); break;
 
-    case PSEUDO_DATA: printf("   DATA - Track found!\n"); break;
+      case PSEUDO_DATA: printf("   DATA - Track found!\n"); break;
 
-    case PSEUDO_PLUGIN:
-      if (ct->GetType() == CTpla)
-        printf("   PLA - Track found!\n");
-      else if (ct->GetType() == CTdynamicspline)
-        printf("   Dynamic Spline Data - Track found!\n");
-      else if (ct->GetType() == CTmorph)
-        printf("   MORPH - Track found!\n");
-      else
-        printf("   unknown PLUGIN - Track found!\n");
-      break;
+      case PSEUDO_PLUGIN:
+        if (ct->GetType() == CTpla)
+          printf("   PLA - Track found!\n");
+        else if (ct->GetType() == CTdynamicspline)
+          printf("   Dynamic Spline Data - Track found!\n");
+        else if (ct->GetType() == CTmorph)
+          printf("   MORPH - Track found!\n");
+        else
+          printf("   unknown PLUGIN - Track found!\n");
+        break;
 
-    case PSEUDO_UNDEF:
-    default: printf("   UNDEFINDED - Track found!\n");
+      case PSEUDO_UNDEF:
+      default: printf("   UNDEFINDED - Track found!\n");
     }
 
     // get CCurve and print key frame data

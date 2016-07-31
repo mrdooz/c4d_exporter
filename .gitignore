@@ -48,3 +48,4 @@ editor/.idea/*
 editor/CMakeScripts/*
 editor/editor.xcode*
 generated/*
+*.db

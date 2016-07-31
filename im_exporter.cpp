@@ -77,8 +77,41 @@ static void ExportSplineChildren(melange::BaseObject* baseObj)
 bool melange::AlienPrimitiveObjectData::Execute()
 {
   melange::BaseObject* baseObj = (melange::BaseObject*)GetNode();
+  int objType = baseObj->GetType();
 
-  string name(CopyString(baseObj->GetName()));
+//#define Ocube				5159
+//#define Osphere			5160
+//#define Oplatonic		5161
+//#define Ocone				5162
+//#define Otorus			5163
+//#define Odisc				5164
+//#define Otube				5165
+//#define Ofigure			5166
+//#define Opyramid		5167
+//#define Oplane			5168
+//#define Ofractal		5169
+//#define Ocylinder		5170
+//#define Ocapsule		5171
+//#define Ooiltank		5172
+//#define Orelief			5173
+//#define Osinglepoly	5174
+
+  const string name = CopyString(baseObj->GetName());
+
+  switch (objType)
+  {
+    case Ocube:
+    {
+      ImPrimitiveCube* prim = new ImPrimitiveCube(baseObj);
+      CopyTransform(baseObj->GetMl(), &prim->xformLocal);
+      CopyTransform(baseObj->GetMg(), &prim->xformGlobal);
+      prim->size = GetVectorParam<Vec3>(baseObj, PRIM_CUBE_LEN);
+      g_scene.primitives.push_back(prim);
+      return true;
+    }
+
+  }
+
   LOG(1, "Skipping primitive object: %s\n", name.c_str());
   return true;
 }

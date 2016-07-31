@@ -64,6 +64,27 @@ struct ImBaseObject
 };
 
 //------------------------------------------------------------------------------
+struct ImPrimitive : public ImBaseObject
+{
+  enum Type
+  {
+    Cube,
+    Sphere,
+  };
+
+  ImPrimitive(Type type, melange::BaseObject* melangeObj) : ImBaseObject(melangeObj), type(type) {}
+  Type type;
+};
+
+//------------------------------------------------------------------------------
+struct ImPrimitiveCube : public ImPrimitive
+{
+  ImPrimitiveCube(melange::BaseObject* melangeObj) : ImPrimitive(ImPrimitive::Cube, melangeObj) {}
+
+  Vec3 size;
+};
+
+//------------------------------------------------------------------------------
 struct ImLight : public ImBaseObject
 {
   enum class Type
@@ -193,6 +214,7 @@ struct ImScene
 {
   ImBaseObject* FindObject(melange::BaseObject* obj);
   ImMaterial* FindMaterial(melange::BaseMaterial* mat);
+  vector<ImPrimitive*> primitives;
   vector<ImMesh*> meshes;
   vector<ImCamera*> cameras;
   vector<ImNullObject*> nullObjects;

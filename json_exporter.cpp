@@ -38,26 +38,26 @@ struct AccessorData
 };
 
 static unordered_map<ImMesh::DataStream::Type, AccessorData> streamToAccessor = {
-  { ImMesh::DataStream::Type::Index16, AccessorData{"u16", "scalar", 2} },
-  { ImMesh::DataStream::Type::Index32, AccessorData{"u32", "scalar", 4} },
-  { ImMesh::DataStream::Type::Pos, AccessorData{"r32", "vec3", 12} },
-  { ImMesh::DataStream::Type::Normal, AccessorData{"r32", "vec3", 12} },
-  { ImMesh::DataStream::Type::UV, AccessorData{"r32", "vec2", 8} },
+    {ImMesh::DataStream::Type::Index16, AccessorData{"u16", "scalar", 2}},
+    {ImMesh::DataStream::Type::Index32, AccessorData{"u32", "scalar", 4}},
+    {ImMesh::DataStream::Type::Pos, AccessorData{"r32", "vec3", 12}},
+    {ImMesh::DataStream::Type::Normal, AccessorData{"r32", "vec3", 12}},
+    {ImMesh::DataStream::Type::UV, AccessorData{"r32", "vec2", 8}},
 };
 
 static unordered_map<ImMesh::DataStream::Type, string> streamTypeToString = {
-  { ImMesh::DataStream::Type::Index16, "index" },
-  { ImMesh::DataStream::Type::Index32, "index" },
-  { ImMesh::DataStream::Type::Pos, "pos" },
-  { ImMesh::DataStream::Type::Normal, "normal" },
-  { ImMesh::DataStream::Type::UV, "uv" },
+    {ImMesh::DataStream::Type::Index16, "index"},
+    {ImMesh::DataStream::Type::Index32, "index"},
+    {ImMesh::DataStream::Type::Pos, "pos"},
+    {ImMesh::DataStream::Type::Normal, "normal"},
+    {ImMesh::DataStream::Type::UV, "uv"},
 };
 
 static unordered_map<ImLight::Type, string> lightTypeToString = {
-  { ImLight::Type::Omni, "omni" },
-  { ImLight::Type::Spot, "spot" },
-  { ImLight::Type::Distant, "distant" },
-  { ImLight::Type::Area, "area" },
+    {ImLight::Type::Omni, "omni"},
+    {ImLight::Type::Spot, "spot"},
+    {ImLight::Type::Distant, "distant"},
+    {ImLight::Type::Area, "area"},
 };
 
 //------------------------------------------------------------------------------
@@ -103,14 +103,13 @@ static void ExportBase(const ImBaseObject* obj, JsonWriter* w)
 {
   w->Emit("name", obj->name);
   w->Emit("id", obj->id);
-  
-  auto fnWriteXform = [=](const string& name, const ImTransform& xform)
-  {
+
+  auto fnWriteXform = [=](const string& name, const ImTransform& xform) {
     JsonWriter::JsonScope s(w, name, JsonWriter::CompoundType::Object);
-    w->EmitArray("pos", { xform.pos.x, xform.pos.y, xform.pos.z });
-    w->EmitArray("rot", { xform.rot.x, xform.rot.y, xform.rot.z });
-    w->EmitArray("quat", { xform.quat.x, xform.quat.y, xform.quat.z, xform.quat.w });
-    w->EmitArray("scale", { xform.scale.x, xform.scale.y, xform.scale.z });
+    w->EmitArray("pos", {xform.pos.x, xform.pos.y, xform.pos.z});
+    w->EmitArray("rot", {xform.rot.x, xform.rot.y, xform.rot.z});
+    w->EmitArray("quat", {xform.quat.x, xform.quat.y, xform.quat.z, xform.quat.w});
+    w->EmitArray("scale", {xform.scale.x, xform.scale.y, xform.scale.z});
   };
 
   fnWriteXform("xformLocal", obj->xformLocal);
@@ -159,22 +158,22 @@ static void ExportLights(const vector<ImLight*>& lights, JsonWriter* w)
     w->Emit("type", lightTypeToString[light->type]);
     switch (light->type)
     {
-    case ImLight::Type::Area:
-    {
-      w->Emit("areaShape", light->areaShape);
-      w->Emit("sizeX", light->areaSizeX);
-      w->Emit("sizeY", light->areaSizeY);
-      if (light->areaShape == "sphere")
-        w->Emit("sizeZ", light->areaSizeZ);
+      case ImLight::Type::Area:
+      {
+        w->Emit("areaShape", light->areaShape);
+        w->Emit("sizeX", light->areaSizeX);
+        w->Emit("sizeY", light->areaSizeY);
+        if (light->areaShape == "sphere")
+          w->Emit("sizeZ", light->areaSizeZ);
 
-      break;
-    }
+        break;
+      }
     }
   }
 }
 
 //------------------------------------------------------------------------------
-static void ExportMeshData(ImMesh*mesh, JsonWriter* w)
+static void ExportMeshData(ImMesh* mesh, JsonWriter* w)
 {
   size_t bufferViewSize = 0;
   size_t bufferViewOffset = buffer.size();
@@ -230,7 +229,7 @@ static void ExportMeshData(ImMesh*mesh, JsonWriter* w)
     }
   }
 
-  bufferViews.push_back(BufferView{ viewName, bufferViewOffset, bufferViewSize });
+  bufferViews.push_back(BufferView{viewName, bufferViewOffset, bufferViewSize});
 }
 
 //------------------------------------------------------------------------------
@@ -253,14 +252,34 @@ static void ExportMeshes(const vector<ImMesh*>& meshes, JsonWriter* w)
       JsonWriter::JsonScope s(w, "bounding_box", JsonWriter::CompoundType::Object);
       auto& center = mesh->aabb.center;
       auto& extents = mesh->aabb.extents;
-      w->EmitArray("center", { center.x, center.y, center.z });
-      w->EmitArray("extents", { extents.x, extents.y, extents.z });
+      w->EmitArray("center", {center.x, center.y, center.z});
+      w->EmitArray("extents", {extents.x, extents.y, extents.z});
     }
 
     ExportBase(mesh, w);
     ExportMeshData(mesh, w);
   }
+}
 
+//------------------------------------------------------------------------------
+static void ExportPrimitives(const vector<ImPrimitive*>& primitives, JsonWriter* w)
+{
+  JsonWriter::JsonScope s(w, "primitives", JsonWriter::CompoundType::Object);
+
+  for (const ImPrimitive* prim : primitives)
+  {
+    switch (prim->type)
+    {
+      case ImPrimitive::Cube:
+      {
+        const ImPrimitiveCube* c = static_cast<const ImPrimitiveCube*>(prim);
+        JsonWriter::JsonScope s(w, "cube", JsonWriter::CompoundType::Object);
+        ExportBase(prim, w);
+        w->EmitArray("size", {c->size.x, c->size.y, c->size.z});
+        break;
+      }
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -272,8 +291,7 @@ static void ExportSceneInfo(const ImScene& scene, JsonWriter* w)
   {
     unordered_map<string, int> nodeIdx;
 
-    auto& fnAddElem = [&nodeIdx, w, &allObjects](const char* base, ImBaseObject* obj)
-    {
+    auto& fnAddElem = [&nodeIdx, w, &allObjects](const char* base, ImBaseObject* obj) {
       char name[32];
       sprintf(name, "%s%.5d", base, ++nodeIdx[base]);
       objectToNodeName[obj] = name;
@@ -292,7 +310,6 @@ static void ExportSceneInfo(const ImScene& scene, JsonWriter* w)
     for (ImBaseObject* obj : scene.meshes)
       fnAddElem("Mesh", obj);
   }
-
 
   {
     JsonWriter::JsonScope s(w, "nodes", JsonWriter::CompoundType::Object);
@@ -329,7 +346,6 @@ static void ExportMaterials(const vector<ImMaterial*>& materials, JsonWriter* w)
         w->Emit("texture", comp.texture);
       w->Emit("brightness", comp.brightness);
     }
-
   }
 }
 
@@ -347,6 +363,7 @@ bool ExportAsJson(const ImScene& scene, const Options& options, SceneStats* stat
     ExportLights(scene.lights, &w);
     ExportMeshes(scene.meshes, &w);
     ExportMaterials(scene.materials, &w);
+    ExportPrimitives(scene.primitives, &w);
 
     ExportBuffers(options, &w);
   }

@@ -24,6 +24,7 @@ struct Options
   bool compressVertices = false;
   bool compressIndices = false;
   int loglevel = 1;
+  bool force = false;
 };
 
 //------------------------------------------------------------------------------

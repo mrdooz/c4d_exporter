@@ -136,6 +136,7 @@ int main(int argc, char** argv)
   parser.AddFlag(nullptr, "compress-vertices", &options.compressVertices);
   parser.AddFlag(nullptr, "compress-indices", &options.compressIndices);
   parser.AddFlag(nullptr, "optimize-indices", &options.optimizeIndices);
+  parser.AddFlag("f", "force", &options.force);
   parser.AddIntArgument(nullptr, "loglevel", &options.loglevel);
   parser.AddStringArgument("o", nullptr, &options.outputDirectory);
 
@@ -199,13 +200,18 @@ int main(int argc, char** argv)
     }
 
     // skip the file if the output file is older than the input
-    struct stat statInput;
-    struct stat statOutput;
     bool processFile = true;
-    if (stat(options.inputFilename.c_str(), &statInput) == 0
-        && stat(outputFilename.c_str(), &statOutput) == 0)
+
+    // skip checking timestamps is the force flag is given
+    if (!options.force)
     {
-      processFile = statInput.st_mtime > statOutput.st_mtime;
+      struct stat statInput;
+      struct stat statOutput;
+      if (stat(options.inputFilename.c_str(), &statInput) == 0
+        && stat(outputFilename.c_str(), &statOutput) == 0)
+      {
+        processFile = statInput.st_mtime > statOutput.st_mtime;
+      }
     }
 
     if (processFile)
