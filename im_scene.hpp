@@ -2,6 +2,19 @@
 #include "exporter_types.hpp"
 
 //------------------------------------------------------------------------------
+// triangle/vertex structures for use by Embree
+struct ImMeshTriangle
+{
+  int v0, v1, v2;
+};
+
+//------------------------------------------------------------------------------
+struct ImMeshVertex
+{
+  float x, y, z, _;
+};
+
+//------------------------------------------------------------------------------
 struct ImSphere
 {
   Vec3 center;
@@ -39,6 +52,7 @@ struct ImTrack
 //------------------------------------------------------------------------------
 struct ImTransform
 {
+  melange::Matrix mtx;
   Vec3 pos;
   Vec3 rot;
   Vec4 quat;
@@ -66,7 +80,7 @@ struct ImBaseObject
 //------------------------------------------------------------------------------
 struct ImPrimitive : public ImBaseObject
 {
-  enum Type
+  enum class Type
   {
     Cube,
     Sphere,
@@ -79,7 +93,7 @@ struct ImPrimitive : public ImBaseObject
 //------------------------------------------------------------------------------
 struct ImPrimitiveCube : public ImPrimitive
 {
-  ImPrimitiveCube(melange::BaseObject* melangeObj) : ImPrimitive(ImPrimitive::Cube, melangeObj) {}
+  ImPrimitiveCube(melange::BaseObject* melangeObj) : ImPrimitive(ImPrimitive::Type::Cube, melangeObj) {}
 
   Vec3 size;
 };
@@ -199,6 +213,8 @@ struct ImMesh : public ImBaseObject
     int elemSize;
     vector<char> data;
   };
+
+  const DataStream* StreamByType(DataStream::Type type) const;
 
   vector<DataStream> dataStreams;
 

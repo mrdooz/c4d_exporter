@@ -10,6 +10,8 @@ unordered_map<int, melange::BaseMaterial*> g_MaterialIdToObj;
 //-----------------------------------------------------------------------------
 void CopyTransform(const melange::Matrix& mtx, ImTransform* xform)
 {
+  xform->mtx = mtx;
+
   melange::Quaternion quat;
   quat.SetHPB(melange::MatrixToHPB(mtx, melange::ROTATIONORDER_HPB));
 

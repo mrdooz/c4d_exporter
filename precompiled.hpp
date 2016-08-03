@@ -24,6 +24,12 @@
 #define NOMINMAX
 #include <windows.h>
 
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+
+#include <embree2/rtcore.h>
+#include <embree2/rtcore_ray.h>
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -34,5 +40,3 @@ typedef int32_t s32;
 
 using namespace std;
 
-#define RANGE(c) (c).begin(), (c).end()
-#define WITH_SCENE_1 1

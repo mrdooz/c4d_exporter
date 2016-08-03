@@ -137,8 +137,10 @@ int main(int argc, char** argv)
   parser.AddFlag(nullptr, "compress-indices", &options.compressIndices);
   parser.AddFlag(nullptr, "optimize-indices", &options.optimizeIndices);
   parser.AddFlag("f", "force", &options.force);
+  parser.AddFlag(nullptr, "sdf", &options.sdf);
   parser.AddIntArgument(nullptr, "loglevel", &options.loglevel);
   parser.AddStringArgument("o", nullptr, &options.outputDirectory);
+  parser.AddIntArgument(nullptr, "grid-size", &options.gridSize);
 
   if (!parser.Parse(argc - 1, argv + 1))
   {

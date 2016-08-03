@@ -19,6 +19,26 @@ struct Vec3
   float x, y, z;
 };
 
+inline float Length(const Vec3& v)
+{
+  return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
+}
+
+inline Vec3 operator-(const Vec3& a, const Vec3& b)
+{
+  return Vec3{ a.x - b.x, a.y - b.y, a.z - b.z };
+}
+
+inline Vec3 Normalize(const Vec3& v)
+{
+  float len = Length(v);
+  if (len == 0)
+    return Vec3{ 0,0,0 };
+
+  float r = 1 / len;
+  return Vec3{v.x * r, v.y * r, v.z * r};
+}
+
 //------------------------------------------------------------------------------
 struct Vec4
 {

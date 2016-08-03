@@ -25,6 +25,8 @@ struct Options
   bool compressIndices = false;
   int loglevel = 1;
   bool force = false;
+  bool sdf = false;
+  int gridSize = 32;
 };
 
 //------------------------------------------------------------------------------
