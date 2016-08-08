@@ -1,7 +1,9 @@
 #include "json_exporter.hpp"
 #include "json_writer.hpp"
 #include "exporter_utils.hpp"
+#if WITH_EMBREE
 #include <c:/projects/embree/common/math/affinespace.h>
+#endif
 #include "contrib/SDFGen/makelevelset3.h"
 
 struct BufferView
@@ -37,7 +39,7 @@ struct AccessorData
 {
   const char* type;
   const char* componentType;
-  int elementSize;
+  size_t elementSize;
 };
 
 static unordered_map<ImMesh::DataStream::Type, AccessorData> streamToAccessor = {
@@ -201,12 +203,12 @@ static void ExportMeshData(ImMesh* mesh, JsonWriter* w)
       continue;
     }
 
-    const auto& data = it->second;
+    const AccessorData& data = it->second;
     accessors.push_back(Accessor{name,
         viewName,
         accessorOffset,
         numElems,
-        0,
+        0u,
         data.elementSize,
         data.type,
         data.componentType,
@@ -360,6 +362,7 @@ static void ExportMaterials(const vector<ImMaterial*>& materials, JsonWriter* w)
   }
 }
 
+#if WITH_EMBREE
 //------------------------------------------------------------------------------
 static bool TrianglesFromMesh(const ImMesh* mesh, vector<ImMeshTriangle>* triangles, vector<ImMeshVertex>* vertices)
 {
@@ -587,7 +590,7 @@ static void CreateSDF(const ImScene& scene, const Options& options, JsonWriter* 
   w->Emit("dataSize", dataSize);
   w->Emit("gridSize", gridSize);
 }
-
+#endif
 
 //------------------------------------------------------------------------------
 static bool TrianglesFromMesh2(const ImMesh* mesh,
@@ -659,6 +662,7 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
 {
   using melange::Vector;
 
+#if 0
   // find the scene box
   const ImPrimitiveCube* bbScene = nullptr;
   for (ImPrimitive* p : scene.primitives)
@@ -676,6 +680,9 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
     return;
   }
 
+  Vec3 size = bbScene->size;
+#endif
+
   vector<Vec3ui> triangles;
   vector<Vec3f> vertices;
 
@@ -687,20 +694,31 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
       continue;
   }
 
-  Vec3 size = bbScene->size;
-
+  
   Array3f sdf;
   int gridRes = options.gridSize;
   Vec3 boxSize = maxPos - minPos;
-  int cx = boxSize.x / gridRes, cy = boxSize.y / gridRes, cz = boxSize.z / gridRes;
+  int cx = boxSize.x / gridRes;
+  int cy = boxSize.y / gridRes;
+  int cz = boxSize.z / gridRes;
 
-  make_level_set3(
+  make_level_set3_brute_force(
       triangles,
       vertices,
       Vec3f{minPos.x, minPos.y, minPos.z},
       Vec3f{maxPos.x, maxPos.y, maxPos.z},
       Vec3i{gridRes, gridRes, gridRes},
       sdf);
+
+  float* ofs = sdf.a.data + gridRes * gridRes * (gridRes - 1);
+  for (size_t i = 0; i < gridRes; ++i)
+  {
+    for (size_t j = 0; j < gridRes; ++j)
+    {
+      printf("%.2f ", ofs[i*gridRes+j]);
+    }
+    printf("\n");
+  }
 
   size_t oldSize = buffer.size();
   size_t dataSize = sdf.a.n * sizeof(float);

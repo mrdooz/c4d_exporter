@@ -63,6 +63,7 @@ struct ImTransform
 struct ImBaseObject
 {
   ImBaseObject(melange::BaseObject* melangeObj);
+  virtual ~ImBaseObject() {}
 
   melange::BaseObject* melangeObj = nullptr;
   ImBaseObject* parent = nullptr;
@@ -110,6 +111,7 @@ struct ImLight : public ImBaseObject
   };
 
   ImLight(melange::BaseObject* melangeObj) : ImBaseObject(melangeObj) {}
+  ~ImLight() {}
 
   Type type;
   Color color;
@@ -118,21 +120,11 @@ struct ImLight : public ImBaseObject
   int falloffType;
   float falloffRadius;
 
-  union
-  {
-    struct
-    {
-      float outerAngle;
-    };
-
-    struct 
-    {
-      string areaShape;
-      float areaSizeX;
-      float areaSizeY;
-      float areaSizeZ;
-    };
-  };
+  float outerAngle;
+  string areaShape;
+  float areaSizeX;
+  float areaSizeY;
+  float areaSizeZ;
 };
 
 //------------------------------------------------------------------------------

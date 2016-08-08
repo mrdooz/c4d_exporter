@@ -19,7 +19,7 @@ void CopyTransform(const melange::Matrix& mtx, ImTransform* xform)
   xform->rot = melange::MatrixToHPB(mtx, melange::ROTATIONORDER_HPB);
 
   // NB: negating the rotation angle
-  xform->quat = Vec4{quat.v.x, quat.v.y, quat.v.z, -quat.w};
+  xform->quat = Vec4{(float)quat.v.x, (float)quat.v.y, (float)quat.v.z, (float)-quat.w};
   xform->scale = melange::Vector(Len(mtx.v1), Len(mtx.v2), Len(mtx.v3));
 }
 

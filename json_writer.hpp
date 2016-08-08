@@ -78,14 +78,14 @@ struct JsonWriter
   void Emit(int64_t value)
   {
     char buf[32];
-    sprintf(buf, "%ld", value);
+    sprintf(buf, "%lld", value);
     res += buf;
   }
 
   void Emit(uint64_t value)
   {
     char buf[32];
-    sprintf(buf, "%ld", value);
+    sprintf(buf, "%llu", value);
     res += buf;
   }
 

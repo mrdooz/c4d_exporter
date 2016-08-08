@@ -1,5 +1,7 @@
 #pragma once
 
+#define WITH_EMBREE 0
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
@@ -27,8 +29,11 @@
 #include <xmmintrin.h>
 #include <pmmintrin.h>
 
+#if WITH_EMBREE
 #include <embree2/rtcore.h>
 #include <embree2/rtcore_ray.h>
+#pragma comment(lib: "embree.lib")
+#endif`
 
 typedef uint8_t u8;
 typedef uint16_t u16;

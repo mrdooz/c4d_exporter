@@ -49,3 +49,4 @@ editor/CMakeScripts/*
 editor/editor.xcode*
 generated/*
 *.db
+*.opendb
