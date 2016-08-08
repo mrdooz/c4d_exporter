@@ -162,7 +162,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\contrib\SDFGen\makelevelset3.cpp" />
+    <ClCompile Include="..\contrib\sdf\makelevelset3.cpp" />
     <ClCompile Include="..\exporter_utils.cpp" />
     <ClCompile Include="..\im_exporter.cpp" />
     <ClCompile Include="..\im_scene.cpp" />
@@ -189,14 +189,14 @@
     <ClInclude Include="..\compress\indexcompressionconstants.h" />
     <ClInclude Include="..\compress\readbitstream.h" />
     <ClInclude Include="..\compress\writebitstream.h" />
-    <ClInclude Include="..\contrib\SDFGen\array1.h" />
-    <ClInclude Include="..\contrib\SDFGen\array2.h" />
-    <ClInclude Include="..\contrib\SDFGen\array3.h" />
-    <ClInclude Include="..\contrib\SDFGen\hashgrid.h" />
-    <ClInclude Include="..\contrib\SDFGen\hashtable.h" />
-    <ClInclude Include="..\contrib\SDFGen\makelevelset3.h" />
-    <ClInclude Include="..\contrib\SDFGen\util.h" />
-    <ClInclude Include="..\contrib\SDFGen\vec.h" />
+    <ClInclude Include="..\contrib\sdf\array1.h" />
+    <ClInclude Include="..\contrib\sdf\array2.h" />
+    <ClInclude Include="..\contrib\sdf\array3.h" />
+    <ClInclude Include="..\contrib\sdf\hashgrid.h" />
+    <ClInclude Include="..\contrib\sdf\hashtable.h" />
+    <ClInclude Include="..\contrib\sdf\makelevelset3.h" />
+    <ClInclude Include="..\contrib\sdf\util.h" />
+    <ClInclude Include="..\contrib\sdf\vec.h" />
     <ClInclude Include="..\exporter.hpp" />
     <ClInclude Include="..\exporter_types.hpp" />
     <ClInclude Include="..\exporter_utils.hpp" />

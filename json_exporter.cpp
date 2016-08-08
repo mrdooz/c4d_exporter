@@ -4,7 +4,7 @@
 #if WITH_EMBREE
 #include <c:/projects/embree/common/math/affinespace.h>
 #endif
-#include "contrib/SDFGen/makelevelset3.h"
+#include "contrib/sdf/makelevelset3.h"
 
 struct BufferView
 {
