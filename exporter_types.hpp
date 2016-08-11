@@ -29,6 +29,17 @@ inline Vec3 operator-(const Vec3& a, const Vec3& b)
   return Vec3{ a.x - b.x, a.y - b.y, a.z - b.z };
 }
 
+inline Vec3 operator+(const Vec3& a, const Vec3& b)
+{
+  return Vec3{ a.x + b.x, a.y + b.y, a.z + b.z };
+}
+
+inline Vec3 operator/(const Vec3& a, float s)
+{
+  float r = 1.0f / s;
+  return Vec3{ a.x * r, a.y * r, a.z * r };
+}
+
 inline Vec3 Normalize(const Vec3& v)
 {
   float len = Length(v);

@@ -222,9 +222,9 @@ void make_level_set3(
   float dy = span[1] / gridSize[1];
   float dz = span[2] / gridSize[2];
 
-  phi.resize(ni, nj, nk);
   // upper bound on distance
-  phi.assign(sqrtf(span[0] * span[0] + span[1] * span[1] + span[2] * span[2]));
+  phi.resize(ni, nj, nk, sqrtf(span[0] * span[0] + span[1] * span[1] + span[2] * span[2]));
+  //phi.assign(sqrtf(span[0] * span[0] + span[1] * span[1] + span[2] * span[2]));
 
   Array3i closest_tri(ni, nj, nk, -1);
 
@@ -356,13 +356,13 @@ void make_level_set3_brute_force(
   int nj = gridSize[1];
   int nk = gridSize[2];
 
-  float dx = span[0] / gridSize[0];
-  float dy = span[1] / gridSize[1];
-  float dz = span[2] / gridSize[2];
+  float dx = span[0] / (gridSize[0] - 1);
+  float dy = span[1] / (gridSize[1] - 1);
+  float dz = span[2] / (gridSize[2] - 1);
 
-  phi.resize(ni, nj, nk);
+  phi.resize(ni, nj, nk, FLT_MAX);
   // upper bound on distance
-  phi.assign(FLT_MAX);
+  //phi.assign(FLT_MAX);
 
   Array3i closest_tri(ni, nj, nk, -1);
 

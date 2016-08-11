@@ -163,26 +163,26 @@ struct Array3
     return a >= x.a;
   }
 
-  void assign(const T& value)
-  {
-    a.assign(value);
-  }
+  //void assign(const T& value)
+  //{
+  //  a.assign(value);
+  //}
 
-  void assign(int ni_, int nj_, int nk_, const T& value)
-  {
-    a.assign(ni_ * nj_ * nk_, value);
-    ni = ni_;
-    nj = nj_;
-    nk = nk_;
-  }
+  //void assign(int ni_, int nj_, int nk_, const T& value)
+  //{
+  //  a.assign(ni_ * nj_ * nk_, value);
+  //  ni = ni_;
+  //  nj = nj_;
+  //  nk = nk_;
+  //}
 
-  void assign(int ni_, int nj_, int nk_, const T* copydata)
-  {
-    a.assign(ni_ * nj_ * nk_, copydata);
-    ni = ni_;
-    nj = nj_;
-    nk = nk_;
-  }
+  //void assign(int ni_, int nj_, int nk_, const T* copydata)
+  //{
+  //  a.assign(ni_ * nj_ * nk_, copydata);
+  //  ni = ni_;
+  //  nj = nj_;
+  //  nk = nk_;
+  //}
 
   const T& at(int i, int j, int k) const
   {
@@ -339,7 +339,8 @@ struct Array3
 // some common arrays
 
 typedef Array3<double, Array1<double>> Array3d;
-typedef Array3<float, Array1<float>> Array3f;
+//typedef Array3<float, Array1<float>> Array3f;
+typedef Array3<float> Array3f;
 typedef Array3<long long, Array1<long long>> Array3ll;
 typedef Array3<unsigned long long, Array1<unsigned long long>> Array3ull;
 typedef Array3<int, Array1<int>> Array3i;

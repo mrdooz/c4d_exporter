@@ -697,10 +697,12 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
   
   Array3f sdf;
   int gridRes = options.gridSize;
-  Vec3 boxSize = maxPos - minPos;
-  int cx = boxSize.x / gridRes;
-  int cy = boxSize.y / gridRes;
-  int cz = boxSize.z / gridRes;
+
+  // expand the grid slightly
+  Vec3 mid = (minPos + maxPos) / 2;
+  Vec3 span = (maxPos - minPos);
+  minPos = minPos - span / gridRes;
+  maxPos = maxPos + span / gridRes;
 
   make_level_set3_brute_force(
       triangles,
@@ -710,7 +712,7 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
       Vec3i{gridRes, gridRes, gridRes},
       sdf);
 
-  float* ofs = sdf.a.data + gridRes * gridRes * (gridRes - 1);
+  float* ofs = sdf.a.data() + gridRes * gridRes * (gridRes - 1);
   for (size_t i = 0; i < gridRes; ++i)
   {
     for (size_t j = 0; j < gridRes; ++j)
@@ -721,18 +723,16 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
   }
 
   size_t oldSize = buffer.size();
-  size_t dataSize = sdf.a.n * sizeof(float);
+  size_t dataSize = sdf.a.size() * sizeof(float);
   buffer.resize(oldSize + dataSize);
-  memcpy(buffer.data() + oldSize, sdf.a.data, dataSize);
+  memcpy(buffer.data() + oldSize, sdf.a.data(), dataSize);
 
   JsonWriter::JsonScope s(w, "sdf", JsonWriter::CompoundType::Object);
   w->Emit("dataOffset", oldSize);
   w->Emit("dataSize", dataSize);
   w->Emit("gridRes", gridRes);
-  w->EmitArray("gridSize", { cx, cy, cz });
   w->EmitArray("gridMin", {minPos.x, minPos.y, minPos.z});
   w->EmitArray("gridMax", {maxPos.x, maxPos.y, maxPos.z});
-  //w->EmitArray("gridBox", sdf.a.
 }
 
 //------------------------------------------------------------------------------
