@@ -2,10 +2,42 @@
 #include "exporter_types.hpp"
 
 //------------------------------------------------------------------------------
-// triangle/vertex structures for use by Embree
-struct ImMeshTriangle
+struct ImSphere
 {
-  int v0, v1, v2;
+  vec3 center;
+  float radius;
+};
+
+//------------------------------------------------------------------------------
+struct ImAABB
+{
+  ImAABB(const vec3& minValue, const vec3& maxValue) : minValue(minValue), maxValue(maxValue)
+  {
+  }
+  ImAABB() : minValue{+FLT_MAX, +FLT_MAX, +FLT_MAX}, maxValue{-FLT_MAX, -FLT_MAX, -FLT_MAX}
+  {
+  }
+
+  ImAABB Extend(const ImAABB& x)
+  {
+    return ImAABB(Min(minValue, x.minValue), Max(maxValue, x.maxValue));
+  }
+
+  vec3 minValue;
+  vec3 maxValue;
+};
+
+//------------------------------------------------------------------------------
+struct ImMeshFace
+{
+  union
+  {
+    struct
+    {
+      int a, b, c;
+    };
+    int vtx[3];
+  };
 };
 
 //------------------------------------------------------------------------------
@@ -15,17 +47,14 @@ struct ImMeshVertex
 };
 
 //------------------------------------------------------------------------------
-struct ImSphere
+struct ImGeometry
 {
-  Vec3 center;
-  float radius;
-};
-
-//------------------------------------------------------------------------------
-struct ImAABB
-{
-  Vec3 center;
-  Vec3 extents;
+  vector<ImMeshFace> faces;
+  vector<ImMeshVertex> vertices;
+  vector<vec3> faceNormals;
+  unordered_map<pair<int, int>, vec3> edgeNormals;
+  vector<vec3> vertexNormals;
+  ImAABB aabb;
 };
 
 //------------------------------------------------------------------------------
@@ -53,10 +82,10 @@ struct ImTrack
 struct ImTransform
 {
   melange::Matrix mtx;
-  Vec3 pos;
-  Vec3 rot;
+  vec3 pos;
+  vec3 rot;
   Vec4 quat;
-  Vec3 scale;
+  vec3 scale;
 };
 
 //------------------------------------------------------------------------------
@@ -96,7 +125,7 @@ struct ImPrimitiveCube : public ImPrimitive
 {
   ImPrimitiveCube(melange::BaseObject* melangeObj) : ImPrimitive(ImPrimitive::Type::Cube, melangeObj) {}
 
-  Vec3 size;
+  vec3 size;
 };
 
 //------------------------------------------------------------------------------
@@ -215,6 +244,7 @@ struct ImMesh : public ImBaseObject
 
   ImSphere boundingSphere;
   ImAABB aabb;
+  ImGeometry geometry ;
 };
 
 //------------------------------------------------------------------------------
@@ -232,6 +262,7 @@ struct ImScene
   unordered_map<melange::BaseObject*, ImBaseObject*> melangeToImObject;
 
   ImSphere boundingSphere;
+  ImAABB boundingBox;
 
   static u32 nextObjectId;
 };

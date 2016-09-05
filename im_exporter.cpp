@@ -105,7 +105,7 @@ bool melange::AlienPrimitiveObjectData::Execute()
       ImPrimitiveCube* prim = new ImPrimitiveCube(baseObj);
       CopyTransform(baseObj->GetMl(), &prim->xformLocal);
       CopyTransform(baseObj->GetMg(), &prim->xformGlobal);
-      prim->size = GetVectorParam<Vec3>(baseObj, PRIM_CUBE_LEN);
+      prim->size = GetVectorParam<vec3>(baseObj, PRIM_CUBE_LEN);
       g_scene.primitives.push_back(prim);
       return true;
     }
@@ -441,9 +441,8 @@ static void CalcBoundingVolumes(const Vector* verts, int vertexCount, ImSphere* 
   }
 
   *sphere = {center, sqrtf(radius)};
-  *aabb = {(minValue + maxValue) / 2, (maxValue - minValue) / 2};
+  *aabb = { minValue, maxValue };
 }
-  
 
 //-----------------------------------------------------------------------------
 static u32 FnvHash(const char* str, u32 d = 0x01000193)
@@ -680,9 +679,8 @@ void CopyOutDataStream(const vector<T>& data, ImMesh::DataStream::Type type, ImM
 }
 
 //-----------------------------------------------------------------------------
-static void CollectVertices(PolygonObject* polyObj,
-    const unordered_map<AlienMaterial*, vector<int>>& polysByMaterial,
-    ImMesh* mesh)
+static void CollectVertices(
+    PolygonObject* polyObj, const unordered_map<AlienMaterial*, vector<int>>& polysByMaterial, ImMesh* mesh)
 {
   int vertexCount = polyObj->GetPointCount();
   if (!vertexCount)
@@ -747,7 +745,7 @@ static void CollectVertices(PolygonObject* polyObj,
 
   vector<Vector32> posStream;
   vector<Vector32> normalStream;
-  vector<Vec2> uvStream;
+  vector<vec2> uvStream;
 
   for (int i = 0; i < numFatVerts; ++i)
   {
@@ -755,7 +753,7 @@ static void CollectVertices(PolygonObject* polyObj,
     normalStream.push_back(fatVtx.fatVerts[i].normal);
     if (fatVtx.uvHandle)
     {
-      uvStream.push_back(Vec2{fatVtx.fatVerts[i].uv.x, fatVtx.fatVerts[i].uv.y});
+      uvStream.push_back(vec2{fatVtx.fatVerts[i].uv.x, fatVtx.fatVerts[i].uv.y});
     }
   }
 
@@ -782,6 +780,108 @@ static void CollectVertices(PolygonObject* polyObj,
 }
 
 //-----------------------------------------------------------------------------
+void CreateGeometry(PolygonObject* polyObj, ImMesh* mesh)
+{
+  const CPolygon* polygons = polyObj->GetPolygonR();
+  const Vector* verts = polyObj->GetPointR();
+
+  // copy over the vertices
+  mesh->geometry.vertices.resize(polyObj->GetPointCount());
+  for (int i = 0; i < polyObj->GetPointCount(); ++i)
+  {
+    // transform vertex to world space
+    Vector v = mesh->xformGlobal.mtx * verts[i];
+    vec3 vv{(float)v.x, (float)v.y, (float)v.z};
+    mesh->geometry.aabb.minValue = Min(mesh->aabb.minValue, vv);
+    mesh->geometry.aabb.maxValue = Max(mesh->aabb.maxValue, vv);
+    mesh->geometry.vertices[i] = ImMeshVertex{vv.x, vv.y, vv.z};
+  }
+
+  // keep track of which polygons each vertex and edge is a part of
+  unordered_map<int, vector<int>> vertexToFace;
+  unordered_map<pair<int, int>, vector<int>> edgeToPolys;
+
+  auto CalcFaceNormal = [=](int a, int b, int c)
+  {
+    vec3 e0 = verts[b] - verts[a];
+    vec3 e1 = verts[c] - verts[a];
+    return Normalize(Cross(e0, e1));
+  };
+
+  auto MakeEdgeKey = [](int a, int b)
+  {
+    return make_pair(min(a, b), max(a, b));
+  };
+
+  // iterate the polygons, triangulate quads, and save faces/face normals
+  mesh->geometry.faces.reserve(polyObj->GetPolygonCount() * 2);
+  mesh->geometry.faceNormals.reserve(polyObj->GetPolygonCount() * 2);
+  int faceIdx = 0;
+  for (int i = 0; i < polyObj->GetPolygonCount(); ++i)
+  {
+    const CPolygon& poly = polygons[i];
+    mesh->geometry.faces.push_back(ImMeshFace{ poly.a, poly.b, poly.c });
+    mesh->geometry.faceNormals.push_back(CalcFaceNormal(poly.a, poly.b, poly.c));
+
+    vertexToFace[poly.a].push_back(faceIdx);
+    vertexToFace[poly.b].push_back(faceIdx);
+    vertexToFace[poly.c].push_back(faceIdx);
+
+    edgeToPolys[MakeEdgeKey(poly.a, poly.b)].push_back(faceIdx);
+    edgeToPolys[MakeEdgeKey(poly.a, poly.c)].push_back(faceIdx);
+    edgeToPolys[MakeEdgeKey(poly.b, poly.c)].push_back(faceIdx);
+
+    faceIdx++;
+
+    // check if quad
+    if (poly.c != poly.d)
+    {
+      mesh->geometry.faces.push_back(ImMeshFace{ poly.a, poly.c, poly.d });
+      mesh->geometry.faceNormals.push_back(CalcFaceNormal(poly.a, poly.c, poly.d));
+
+      vertexToFace[poly.d].push_back(faceIdx);
+
+      edgeToPolys[MakeEdgeKey(poly.a, poly.c)].push_back(faceIdx);
+      edgeToPolys[MakeEdgeKey(poly.a, poly.d)].push_back(faceIdx);
+      edgeToPolys[MakeEdgeKey(poly.c, poly.d)].push_back(faceIdx);
+
+      faceIdx++;
+    }
+  }
+
+  // create vertex normals
+  // nb, right now this is just standard gouraud. later i want to do angle weighted
+  mesh->geometry.vertexNormals.resize(mesh->geometry.vertices.size());
+  for (const auto& kv : vertexToFace)
+  {
+    int vtx = kv.first;
+    const vector<int>& faces = kv.second;
+
+    vec3 n{ 0,0,0 };
+    for (size_t i = 0; i < faces.size(); ++i)
+    {
+      n += mesh->geometry.faceNormals[faces[i]];
+    }
+
+    mesh->geometry.vertexNormals[vtx] = Normalize(n);
+  }
+
+  // create edge normals
+  for (const auto& kv : edgeToPolys)
+  {
+    pair<int, int> edge = kv.first;
+    const vector<int>& faces = kv.second;
+
+    vec3 n{0, 0, 0};
+    for (size_t i = 0; i < faces.size(); ++i)
+    {
+      n += mesh->geometry.faceNormals[faces[i]];
+    }
+    mesh->geometry.edgeNormals[edge] = Normalize(n);
+  }
+}
+
+//-----------------------------------------------------------------------------
 bool AlienPolygonObjectData::Execute()
 {
   BaseObject* baseObj = (BaseObject*)GetNode();
@@ -797,6 +897,9 @@ bool AlienPolygonObjectData::Execute()
 
   CopyTransform(polyObj->GetMl(), &mesh->xformLocal);
   CopyTransform(polyObj->GetMg(), &mesh->xformGlobal);
+
+  CreateGeometry(polyObj, mesh.get());
+  g_scene.boundingBox = g_scene.boundingBox.Extend(mesh->geometry.aabb);
 
   g_scene.meshes.push_back(mesh.release());
 

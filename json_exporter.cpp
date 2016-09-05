@@ -1,6 +1,8 @@
 #include "json_exporter.hpp"
 #include "json_writer.hpp"
 #include "exporter_utils.hpp"
+#include "sdf_gen.hpp"
+
 #if WITH_EMBREE
 #include <c:/projects/embree/common/math/affinespace.h>
 #endif
@@ -263,8 +265,8 @@ static void ExportMeshes(const vector<ImMesh*>& meshes, JsonWriter* w)
 
     {
       JsonWriter::JsonScope s(w, "bounding_box", JsonWriter::CompoundType::Object);
-      auto& center = mesh->aabb.center;
-      auto& extents = mesh->aabb.extents;
+      const vec3& center =  (mesh->aabb.maxValue + mesh->aabb.minValue) / 2;
+      const vec3& extents = (mesh->aabb.maxValue - mesh->aabb.minValue) / 2;
       w->EmitArray("center", {center.x, center.y, center.z});
       w->EmitArray("extents", {extents.x, extents.y, extents.z});
     }
@@ -364,7 +366,7 @@ static void ExportMaterials(const vector<ImMaterial*>& materials, JsonWriter* w)
 
 #if WITH_EMBREE
 //------------------------------------------------------------------------------
-static bool TrianglesFromMesh(const ImMesh* mesh, vector<ImMeshTriangle>* triangles, vector<ImMeshVertex>* vertices)
+static bool TrianglesFromMesh(const ImMesh* mesh, vector<ImMeshFace>* triangles, vector<ImMeshVertex>* vertices)
 {
   // find index and pos data streams
   const ImMesh::DataStream* indexStream = mesh->StreamByType(ImMesh::DataStream::Type::Index16);
@@ -406,7 +408,7 @@ static bool TrianglesFromMesh(const ImMesh* mesh, vector<ImMeshTriangle>* triang
     }
   }
 
-  Vec3* vtx = (Vec3*)posStream->data.data();
+  vec3* vtx = (vec3*)posStream->data.data();
   for (size_t i = 0; i < numVertices; ++i)
   {
     (*vertices)[i] = ImMeshVertex{ vtx->x, vtx->y, vtx->z, 0.f };
@@ -446,12 +448,12 @@ static void CreateSDF(const ImScene& scene, const Options& options, JsonWriter* 
 
   vector<u32> geomIds;
 
-  vector<Vec3> triangleCenters;
+  vector<vec3> triangleCenters;
 
   // Add all the meshes to the embree scene
   for (const ImMesh* mesh : scene.meshes)
   {
-    vector<ImMeshTriangle> triangles;
+    vector<ImMeshFace> triangles;
     vector<ImMeshVertex> vertices;
 
     if (!TrianglesFromMesh(mesh, &triangles, &vertices))
@@ -478,23 +480,23 @@ static void CreateSDF(const ImScene& scene, const Options& options, JsonWriter* 
     // store all the triangle centers for the ray tracing
     for (size_t i = 0; i < triangles.size(); ++i)
     {
-      const ImMeshVertex& v0 = vertices[triangles[i].v0];
-      const ImMeshVertex& v1 = vertices[triangles[i].v1];
-      const ImMeshVertex& v2 = vertices[triangles[i].v2];
+      const ImMeshVertex& v0 = vertices[triangles[i].a];
+      const ImMeshVertex& v1 = vertices[triangles[i].b];
+      const ImMeshVertex& v2 = vertices[triangles[i].c];
 
       Vector center =
           (Vector(v0.x, v0.y, v0.z) + Vector(v1.x, v1.y, v1.z) + Vector(v2.x, v2.y, v2.z)) / 3;
 
       center = mesh->xformGlobal.mtx * center;
-      triangleCenters.push_back(Vec3{ (float)center.x, (float)center.y, (float)center.z });
+      triangleCenters.push_back(vec3{ (float)center.x, (float)center.y, (float)center.z });
     }
 
     ImMeshVertex* rtcVertices = (ImMeshVertex*)rtcMapBuffer(rtcScene, geomId, RTC_VERTEX_BUFFER);
     memcpy(rtcVertices, vertices.data(), vertices.size() * sizeof(ImMeshVertex));
     rtcUnmapBuffer(rtcScene, geomId, RTC_VERTEX_BUFFER);
 
-    ImMeshTriangle* rtcTriangles = (ImMeshTriangle*)rtcMapBuffer(rtcScene, geomId, RTC_INDEX_BUFFER);
-    memcpy(rtcTriangles, triangles.data(), triangles.size() * sizeof(ImMeshTriangle));
+    ImMeshFace* rtcTriangles = (ImMeshFace*)rtcMapBuffer(rtcScene, geomId, RTC_INDEX_BUFFER);
+    memcpy(rtcTriangles, triangles.data(), triangles.size() * sizeof(ImMeshFace));
     rtcUnmapBuffer(rtcScene, geomId, RTC_INDEX_BUFFER);
   }
 
@@ -504,10 +506,10 @@ static void CreateSDF(const ImScene& scene, const Options& options, JsonWriter* 
 
   int gridSize = options.gridSize;
 
-  Vec3 size = bbScene->size;
-  Vec3 inc = { size.x / gridSize, size.y / gridSize, size.z / gridSize };
-  Vec3 orgPos = {-size.x / 2 + inc.x / 2, -size.y / 2 + inc.y / 2, -size.z / 2 + inc.z / 2};
-  Vec3 curPos = orgPos;
+  vec3 size = bbScene->size;
+  vec3 inc = { size.x / gridSize, size.y / gridSize, size.z / gridSize };
+  vec3 orgPos = {-size.x / 2 + inc.x / 2, -size.y / 2 + inc.y / 2, -size.z / 2 + inc.z / 2};
+  vec3 curPos = orgPos;
 
   vector<float> sdf(gridSize * gridSize * gridSize);
   size_t idx = 0;
@@ -538,7 +540,7 @@ static void CreateSDF(const ImScene& scene, const Options& options, JsonWriter* 
           ray.org[1] = curPos.y;
           ray.org[2] = curPos.z;
 
-          Vec3 dir = Normalize(triangleCenters[n] - curPos);
+          vec3 dir = Normalize(triangleCenters[n] - curPos);
           ray.dir[0] = dir.x;
           ray.dir[1] = dir.y;
           ray.dir[2] = dir.z;
@@ -596,8 +598,8 @@ static void CreateSDF(const ImScene& scene, const Options& options, JsonWriter* 
 static bool TrianglesFromMesh2(const ImMesh* mesh,
     vector<Vec3ui>* triangles,
     vector<Vec3f>* vertices,
-    Vec3* minPos,
-    Vec3* maxPos)
+    vec3* minPos,
+    vec3* maxPos)
 {
   // find index and pos data streams
   const ImMesh::DataStream* indexStream = mesh->StreamByType(ImMesh::DataStream::Type::Index16);
@@ -642,15 +644,15 @@ static bool TrianglesFromMesh2(const ImMesh* mesh,
     }
   }
 
-  Vec3* vtx = (Vec3*)posStream->data.data();
+  vec3* vtx = (vec3*)posStream->data.data();
   for (size_t i = 0; i < numVertices; ++i)
   {
     melange::Vector v = melange::Vector{ vtx->x, vtx->y, vtx->z };
     v = mesh->xformGlobal.mtx * v;
-    Vec3 vv = { (float)v.x, (float)v.y, (float)v.z };
+    vec3 vv = { (float)v.x, (float)v.y, (float)v.z };
     (*vertices)[i + oldVtxIdx] = Vec3f{ vv.x, vv.y, vv.z };
-    *minPos = Vec3{ min(vv.x, minPos->x), min(vv.y, minPos->y), min(vv.z, minPos->z) };
-    *maxPos = Vec3{ max(vv.x, maxPos->x), max(vv.y, maxPos->y), max(vv.z, maxPos->z) };
+    *minPos = vec3{ min(vv.x, minPos->x), min(vv.y, minPos->y), min(vv.z, minPos->z) };
+    *maxPos = vec3{ max(vv.x, maxPos->x), max(vv.y, maxPos->y), max(vv.z, maxPos->z) };
     vtx++;
   }
 
@@ -686,8 +688,8 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
   vector<Vec3ui> triangles;
   vector<Vec3f> vertices;
 
-  Vec3 minPos{ +FLT_MAX, +FLT_MAX, +FLT_MAX };
-  Vec3 maxPos{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+  vec3 minPos{ +FLT_MAX, +FLT_MAX, +FLT_MAX };
+  vec3 maxPos{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
   for (const ImMesh* mesh : scene.meshes)
   {
     if (!TrianglesFromMesh2(mesh, &triangles, &vertices, &minPos, &maxPos))
@@ -699,8 +701,8 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
   int gridRes = options.gridSize;
 
   // expand the grid slightly
-  Vec3 mid = (minPos + maxPos) / 2;
-  Vec3 span = (maxPos - minPos);
+  vec3 mid = (minPos + maxPos) / 2;
+  vec3 span = (maxPos - minPos);
   minPos = minPos - span / gridRes;
   maxPos = maxPos + span / gridRes;
 
@@ -736,6 +738,122 @@ static void CreateSDF2(const ImScene& scene, const Options& options, JsonWriter*
 }
 
 //------------------------------------------------------------------------------
+static void CreateSDF3(const ImScene& scene, const Options& options, JsonWriter* w)
+{
+  using melange::Vector;
+
+  size_t gridRes = options.gridSize;
+  vector<float> sdf(gridRes*gridRes*gridRes);
+
+  vec3 minPos = scene.boundingBox.minValue;
+  vec3 maxPos = scene.boundingBox.maxValue;
+  vec3 span = maxPos - minPos;
+  minPos = minPos - 0.05f * span;
+  maxPos = maxPos + 0.05f * span;
+
+  vec3 bottomLeft = minPos;
+  vec3 cur = bottomLeft;
+  vec3 inc = (maxPos - minPos) / (float)(gridRes - 1);
+
+  for (size_t i = 0; i < gridRes; ++i)
+  {
+    cur.y = bottomLeft.y;
+    for (size_t j = 0; j < gridRes; ++j)
+    {
+      cur.x = bottomLeft.x;
+      for (size_t k = 0; k < gridRes; ++k)
+      {
+        float closestDistance = FLT_MAX;
+        vec3 closestPt, closestNormal;
+
+        for (const ImMesh* mesh : scene.meshes)
+        {
+          const ImMeshVertex* verts = mesh->geometry.vertices.data();
+
+          for (size_t faceIdx = 0; faceIdx < mesh->geometry.faces.size(); ++faceIdx)
+          {
+            const ImMeshFace& face = mesh->geometry.faces[faceIdx];
+            TriangleFeature feature;
+            vec3 pt = ClosestPtvec3Triangle(cur, verts[face.a], verts[face.b], verts[face.c], &feature);
+            float d = LengthSq(pt - cur);
+            if (d < closestDistance)
+            {
+              // use feature normal to determine inside/outside
+              closestDistance = d;
+              closestPt = pt;
+
+              if (feature & FeatureVertex)
+              {
+                int ofs = feature - FeatureVertex;
+                closestNormal = mesh->geometry.vertexNormals[face.vtx[ofs]];
+              }
+              else if (feature & FeatureEdge)
+              {
+                int a, b;
+                if (feature == FeatureEdgeAB)
+                {
+                  a = face.a;
+                  b = face.b;
+                }
+                else if (feature == FeatureEdgeAC)
+                {
+                  a = face.a;
+                  b = face.c;
+                }
+                else
+                {
+                  // BC
+                  a = face.b;
+                  b = face.c;
+                }
+                pair<int, int> edge = make_pair(min(a, b), max(a, b));
+                auto it = mesh->geometry.edgeNormals.find(edge);
+                if (it != mesh->geometry.edgeNormals.end())
+                {
+                  closestNormal = it->second;
+                }
+                else
+                {
+                  LOG(1, "Unable to find edge: %d - %d\n", a, b);
+                }
+
+              }
+              else
+              {
+                closestNormal = mesh->geometry.faceNormals[faceIdx];
+              }
+            }
+          }
+        }
+
+        closestDistance = sqrtf(closestDistance);
+        // check if the current point is behind the closest point (inside the shape)
+        float mul = Dot(Normalize(cur - closestPt), closestNormal) < 0 ? -1 : 1;
+        sdf[i*gridRes*gridRes + j*gridRes + k] = mul * sqrtf(closestDistance);
+
+        cur.x += inc.x;
+      }
+
+      cur.y += inc.y;
+    }
+
+    cur.z += inc.z;
+  }
+
+  size_t oldSize = buffer.size();
+  size_t dataSize = sdf.size() * sizeof(float);
+  buffer.resize(oldSize + dataSize);
+  memcpy(buffer.data() + oldSize, sdf.data(), dataSize);
+
+  JsonWriter::JsonScope s(w, "sdf", JsonWriter::CompoundType::Object);
+  w->Emit("dataOffset", oldSize);
+  w->Emit("dataSize", dataSize);
+  w->Emit("gridRes", gridRes);
+  w->EmitArray("gridMin", { minPos.x, minPos.y, minPos.z });
+  w->EmitArray("gridMax", { maxPos.x, maxPos.y, maxPos.z });
+}
+
+//------------------------------------------------------------------------------
 bool ExportAsJson(const ImScene& scene, const Options& options, SceneStats* stats)
 {
   JsonWriter w;
@@ -756,7 +874,8 @@ bool ExportAsJson(const ImScene& scene, const Options& options, SceneStats* stat
     if (options.sdf)
     {
       //CreateSDF(scene, options, &w);
-      CreateSDF2(scene, options, &w);
+      //CreateSDF2(scene, options, &w);
+      CreateSDF3(scene, options, &w);
     }
   }
 

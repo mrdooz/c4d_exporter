@@ -179,6 +179,7 @@
       </ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.hpp</ForcedIncludeFiles>
     </ClCompile>
+    <ClCompile Include="..\sdf_gen.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\arg_parse.hpp" />
@@ -206,6 +207,7 @@
     <ClInclude Include="..\json_writer.hpp" />
     <ClInclude Include="..\melange_helpers.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
+    <ClInclude Include="..\sdf_gen.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -132,6 +132,7 @@ void CollectAnimationTracks()
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
+
   ArgParse parser;
   parser.AddFlag(nullptr, "compress-vertices", &options.compressVertices);
   parser.AddFlag(nullptr, "compress-indices", &options.compressIndices);

@@ -49,5 +49,4 @@ namespace melange
   public:
     virtual Bool Execute();
   };
-
 }
