@@ -4,25 +4,14 @@
 //-----------------------------------------------------------------------------
 
 #include "exporter.hpp"
-#include "melange_helpers.hpp"
 #include "arg_parse.hpp"
 #include "exporter_utils.hpp"
 #include "json_exporter.hpp"
+#include "melange_helpers.hpp"
 
 //-----------------------------------------------------------------------------
 namespace
 {
-  string ReplaceAll(const string& str, char toReplace, char replaceWith)
-  {
-    string res(str);
-    for (size_t i = 0; i < res.size(); ++i)
-    {
-      if (res[i] == toReplace)
-        res[i] = replaceWith;
-    }
-    return res;
-  }
-
   //------------------------------------------------------------------------------
   string MakeCanonical(const string& str)
   {
@@ -75,6 +64,13 @@ ImBaseObject* ImScene::FindObject(melange::BaseObject* obj)
 }
 
 //-----------------------------------------------------------------------------
+melange::BaseObject* ImScene::FindMelangeObject(ImBaseObject* obj)
+{
+  auto it = imObjectToMelange.find(obj);
+  return it == imObjectToMelange.end() ? nullptr : it->second;
+}
+
+//-----------------------------------------------------------------------------
 ImMaterial* ImScene::FindMaterial(melange::BaseMaterial* mat)
 {
   for (ImMaterial* m : materials)
@@ -121,18 +117,57 @@ void ExportAnimations()
 }
 
 //-----------------------------------------------------------------------------
-void CollectAnimationTracks()
+static void CollectAnimationTracks()
 {
+  melange::GeData mydata;
+
+  // get fps and start/end time
+  if (g_Doc->GetParameter(melange::DOCUMENT_FPS, mydata))
+    g_scene.fps = mydata.GetInt32();
+
+  if (g_Doc->GetParameter(melange::DOCUMENT_MINTIME, mydata))
+    g_scene.startTime = mydata.GetTime().Get();
+
+  if (g_Doc->GetParameter(melange::DOCUMENT_MAXTIME, mydata))
+    g_scene.endTime = mydata.GetTime().Get();
+
   for (melange::BaseObject* obj = g_Doc->GetFirstObject(); obj; obj = obj->GetNext())
   {
-    CollectionAnimationTracksForObj(obj, &g_AnimationTracks[obj]);
+    for (melange::CTrack* track = obj->GetFirstCTrack(); track; track = track->GetNext())
+    {
+      ImBaseObject* imObj = g_scene.FindObject(obj);
+      if (!imObj)
+      {
+        LOG(1, "Unable to find animated ImObject: %s\n", CopyString(obj->GetName()).c_str());
+        break;
+      }
+
+      ImSampledTrack imTrack;
+      imTrack.name = CopyString(track->GetName());
+      imTrack.name = ReplaceAll(imTrack.name, ' ', 0);
+
+      // sample the track
+      float inc = (g_scene.endTime - g_scene.startTime) / g_scene.fps;
+      int startFrame = g_scene.startTime * g_scene.fps;
+      int endFrame = g_scene.endTime * g_scene.fps;
+
+      float curTime = g_scene.startTime;
+      imTrack.values.resize(endFrame - startFrame + 1);
+      for (int curFrame = startFrame; curFrame <= endFrame; curFrame++)
+      {
+        float value = track->GetValue(g_Doc, melange::BaseTime((float)curFrame / g_scene.fps), g_scene.fps);
+        imTrack.values[curFrame - startFrame] = value;
+        curTime += inc;
+      }
+
+      imObj->sampledAnimTracks.push_back(imTrack);
+    }
   }
 }
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
-
   ArgParse parser;
   parser.AddFlag(nullptr, "compress-vertices", &options.compressVertices);
   parser.AddFlag(nullptr, "compress-indices", &options.compressIndices);
@@ -211,7 +246,7 @@ int main(int argc, char** argv)
       struct stat statInput;
       struct stat statOutput;
       if (stat(options.inputFilename.c_str(), &statInput) == 0
-        && stat(outputFilename.c_str(), &statOutput) == 0)
+          && stat(outputFilename.c_str(), &statOutput) == 0)
       {
         processFile = statInput.st_mtime > statOutput.st_mtime;
       }
@@ -225,16 +260,16 @@ int main(int argc, char** argv)
       struct tm* now = localtime(&startTime);
 
       LOG(1,
-        "==] STARTING [=================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n%s -> "
-        "%s\n",
-        now->tm_year + 1900,
-        now->tm_mon + 1,
-        now->tm_mday,
-        now->tm_hour,
-        now->tm_min,
-        now->tm_sec,
-        options.inputFilename.c_str(),
-        outputFilename.c_str());
+          "==] STARTING [=================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n%s -> "
+          "%s\n",
+          now->tm_year + 1900,
+          now->tm_mon + 1,
+          now->tm_mday,
+          now->tm_hour,
+          now->tm_min,
+          now->tm_sec,
+          options.inputFilename.c_str(),
+          outputFilename.c_str());
 
       g_Doc = NewObj(melange::AlienBaseDocument);
       g_File = NewObj(melange::HyperFile);
@@ -247,7 +282,6 @@ int main(int argc, char** argv)
 
       g_File->Close();
 
-      CollectAnimationTracks();
       CollectMaterials(g_Doc);
       CollectMaterials2(g_Doc);
       g_Doc->CreateSceneFromC4D();
@@ -259,6 +293,8 @@ int main(int argc, char** argv)
         if (!res)
           break;
       }
+
+      CollectAnimationTracks();
 
       ExportAnimations();
 
@@ -272,35 +308,35 @@ int main(int argc, char** argv)
       DeleteObj(g_File);
 
       LOG(2,
-        "--> stats: \n"
-        "    null object size: %.2f kb\n"
-        "    camera object size: %.2f kb\n"
-        "    mesh object size: %.2f kb\n"
-        "    light object size: %.2f kb\n"
-        "    material object size: %.2f kb\n"
-        "    spline object size: %.2f kb\n"
-        "    animation object size: %.2f kb\n"
-        "    data object size: %.2f kb\n",
-        (float)stats.nullObjectSize / 1024,
-        (float)stats.cameraSize / 1024,
-        (float)stats.meshSize / 1024,
-        (float)stats.lightSize / 1024,
-        (float)stats.materialSize / 1024,
-        (float)stats.splineSize / 1024,
-        (float)stats.animationSize / 1024,
-        (float)stats.dataSize / 1024);
+          "--> stats: \n"
+          "    null object size: %.2f kb\n"
+          "    camera object size: %.2f kb\n"
+          "    mesh object size: %.2f kb\n"
+          "    light object size: %.2f kb\n"
+          "    material object size: %.2f kb\n"
+          "    spline object size: %.2f kb\n"
+          "    animation object size: %.2f kb\n"
+          "    data object size: %.2f kb\n",
+          (float)stats.nullObjectSize / 1024,
+          (float)stats.cameraSize / 1024,
+          (float)stats.meshSize / 1024,
+          (float)stats.lightSize / 1024,
+          (float)stats.materialSize / 1024,
+          (float)stats.splineSize / 1024,
+          (float)stats.animationSize / 1024,
+          (float)stats.dataSize / 1024);
 
       time_t endTime = time(0);
       now = localtime(&endTime);
 
       LOG(1,
-        "==] DONE [=====================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n",
-        now->tm_year + 1900,
-        now->tm_mon + 1,
-        now->tm_mday,
-        now->tm_hour,
-        now->tm_min,
-        now->tm_sec);
+          "==] DONE [=====================================] %.4d:%.2d:%.2d-%.2d:%.2d:%.2d ]==\n",
+          now->tm_year + 1900,
+          now->tm_mon + 1,
+          now->tm_mday,
+          now->tm_hour,
+          now->tm_min,
+          now->tm_sec);
 
       if (options.logfile)
         fclose(options.logfile);

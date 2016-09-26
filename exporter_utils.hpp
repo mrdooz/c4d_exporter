@@ -10,7 +10,9 @@ namespace melange
 
 //-----------------------------------------------------------------------------
 struct ImTransform;
+struct ImBaseObject;
 void CopyTransform(const melange::Matrix& mtx, ImTransform* xform);
+void CopyBaseTransform(melange::BaseObject* melangeObj, ImBaseObject* imObj);
 void CopyMatrix(const melange::Matrix& mtx, float* out);
 
 void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* tracks);
@@ -18,6 +20,8 @@ void CollectMaterials(melange::AlienBaseDocument* c4dDoc);
 void CollectMaterials2(melange::AlienBaseDocument* c4dDoc);
 
 string CopyString(const melange::String& str);
+string ReplaceAll(const string& str, char toReplace, char replaceWith);
+
 
 #define LOG(lvl, fmt, ...)                                                                         \
   if (options.loglevel >= lvl)                                                                     \

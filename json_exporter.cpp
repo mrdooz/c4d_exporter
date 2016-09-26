@@ -8,29 +8,22 @@
 #endif
 #include "contrib/sdf/makelevelset3.h"
 
-struct BufferView
-{
-  string name;
-  size_t offset;
-  size_t size;
-};
-
 static unordered_map<ImBaseObject*, string> _objectToNodeName;
 static vector<char> buffer;
 
-struct AccessorData
+struct StreamData
 {
   const char* type;
   const char* componentType;
   size_t elementSize;
 };
 
-static unordered_map<ImMesh::DataStream::Type, AccessorData> streamToAccessor = {
-    {ImMesh::DataStream::Type::Index16, AccessorData{"u16", "scalar", 2}},
-    {ImMesh::DataStream::Type::Index32, AccessorData{"u32", "scalar", 4}},
-    {ImMesh::DataStream::Type::Pos, AccessorData{"r32", "vec3", 12}},
-    {ImMesh::DataStream::Type::Normal, AccessorData{"r32", "vec3", 12}},
-    {ImMesh::DataStream::Type::UV, AccessorData{"r32", "vec2", 8}},
+static unordered_map<ImMesh::DataStream::Type, StreamData> streamToStreamData = {
+    {ImMesh::DataStream::Type::Index16, StreamData{"u16", "scalar", 2}},
+    {ImMesh::DataStream::Type::Index32, StreamData{"u32", "scalar", 4}},
+    {ImMesh::DataStream::Type::Pos, StreamData{"r32", "vec3", 12}},
+    {ImMesh::DataStream::Type::Normal, StreamData{"r32", "vec3", 12}},
+    {ImMesh::DataStream::Type::UV, StreamData{"r32", "vec2", 8}},
 };
 
 static unordered_map<ImMesh::DataStream::Type, string> streamTypeToString = {
@@ -48,6 +41,8 @@ static unordered_map<ImLight::Type, string> lightTypeToString = {
     {ImLight::Type::Area, "area"},
 };
 
+static void ExportAnimationTracks(const ImBaseObject* obj, JsonWriter* w);
+
 //------------------------------------------------------------------------------
 static void AddToBuffer(const char* data, size_t len, const string& name, JsonWriter* w)
 {
@@ -55,6 +50,13 @@ static void AddToBuffer(const char* data, size_t len, const string& name, JsonWr
   w->Emit("offset", buffer.size());
   w->Emit("size", len);
   buffer.insert(buffer.end(), data, data + len);
+}
+
+//------------------------------------------------------------------------------
+template <typename T>
+static void AddToBuffer(const vector<T>& v, const string& name, JsonWriter* w)
+{
+  AddToBuffer((const char*)v.data(), v.size() * sizeof(T), name, w);
 }
 
 //------------------------------------------------------------------------------
@@ -73,6 +75,9 @@ static void ExportBase(const ImBaseObject* obj, JsonWriter* w)
 
   fnWriteXform("xformLocal", obj->xformLocal);
   fnWriteXform("xformGlobal", obj->xformGlobal);
+
+  ExportAnimationTracks(obj, w);
+
 }
 
 //------------------------------------------------------------------------------
@@ -96,6 +101,9 @@ static void ExportCameras(const vector<ImCamera*>& cameras, JsonWriter* w)
   {
     JsonWriter::JsonScope s(w, _objectToNodeName[cam], JsonWriter::CompoundType::Object);
     ExportBase(cam, w);
+    w->Emit("nearPlane", cam->nearPlane);
+    w->Emit("farPlane", cam->farPlane);
+    w->Emit("fovV", cam->verticalFov);
 
     if (cam->targetObj)
     {
@@ -132,16 +140,45 @@ static void ExportLights(const vector<ImLight*>& lights, JsonWriter* w)
 }
 
 //------------------------------------------------------------------------------
+template <typename T>
+void operator+=(vector<T>& lhs, const vector<T>& rhs)
+{
+  lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+}
+
+//------------------------------------------------------------------------------
+static void ExportWorldGeometry(const ImScene& scene, JsonWriter* w)
+{
+  vector<ImMeshFace> faces;
+  vector<ImMeshVertex> vertices;
+  vector<vec3> faceNormals;
+  vector<vec3> vertexNormals;
+
+  int faceOfs = 0;
+  for (ImMesh* mesh : scene.meshes)
+  {
+    vertices += mesh->geometry.vertices;
+    vertexNormals += mesh->geometry.vertexNormals;
+    faceNormals += mesh->geometry.faceNormals;
+
+    faces.reserve(faces.size() + mesh->geometry.faces.size());
+    for (const ImMeshFace& face : mesh->geometry.faces)
+      faces.push_back(ImMeshFace{face.a + faceOfs, face.b + faceOfs, face.c + faceOfs});
+    faceOfs += (int)mesh->geometry.vertices.size();
+  }
+
+  w->Emit("numIndices", faces.size() * 3);
+  w->Emit("numVertices", vertices.size());
+
+  AddToBuffer(faces, "indexData", w);
+  AddToBuffer(vertices, "vertexData", w);
+  AddToBuffer(vertexNormals, "vertexNormalData", w);
+  AddToBuffer(faceNormals, "faceNormalData", w);
+}
+
+//------------------------------------------------------------------------------
 static void ExportMeshData(ImMesh* mesh, JsonWriter* w)
 {
-  size_t bufferViewSize = 0;
-  size_t bufferViewOffset = buffer.size();
-
-  string viewName = _objectToNodeName[mesh] + "_bufferView";
-  size_t accessorOffset = 0;
-
-  unordered_map<ImMesh::DataStream::Type, string> dataStreamToAccessor;
-
   // save the stream data
   {
     JsonWriter::JsonScope s(w, "streams", JsonWriter::CompoundType::Object);
@@ -149,21 +186,21 @@ static void ExportMeshData(ImMesh* mesh, JsonWriter* w)
     {
       JsonWriter::JsonScope s(w, streamTypeToString[dataStream.type], JsonWriter::CompoundType::Object);
 
-      auto it = streamToAccessor.find(dataStream.type);
-      if (it == streamToAccessor.end())
+      auto it = streamToStreamData.find(dataStream.type);
+      if (it == streamToStreamData.end())
       {
         // LOG: unknown data stream type
         continue;
       }
 
-      const AccessorData& data = it->second;
+      const StreamData& data = it->second;
       w->Emit("type", data.componentType);
       w->Emit("subtype", data.type);
       w->Emit("elementSize", data.elementSize);
       w->Emit("numElements", dataStream.NumElems());
 
       // copy the stream data to the buffer
-      AddToBuffer(dataStream.data.data(), dataStream.data.size(), "data", w);
+      AddToBuffer(dataStream.data, "data", w);
     }
   }
 
@@ -178,7 +215,23 @@ static void ExportMeshData(ImMesh* mesh, JsonWriter* w)
       w->Emit("indexCount", m.indexCount);
     }
   }
+}
 
+//------------------------------------------------------------------------------
+static void ExportAnimationTracks(const ImBaseObject* obj, JsonWriter* w)
+{
+  if (obj->sampledAnimTracks.empty())
+    return;
+
+  {
+    JsonWriter::JsonScope s(w, "animTracks", JsonWriter::CompoundType::Object);
+
+    for (const ImSampledTrack& track : obj->sampledAnimTracks)
+    {
+      JsonWriter::JsonScope s(w, track.name, JsonWriter::CompoundType::Object);
+      AddToBuffer(track.values, "data", w);
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -193,14 +246,14 @@ static void ExportMeshes(const vector<ImMesh*>& meshes, JsonWriter* w)
     ExportBase(mesh, w);
     ExportMeshData(mesh, w);
     {
-      JsonWriter::JsonScope s(w, "bounding_sphere", JsonWriter::CompoundType::Object);
+      JsonWriter::JsonScope s(w, "boundingSphere", JsonWriter::CompoundType::Object);
       w->Emit("radius", mesh->boundingSphere.radius);
       auto& center = mesh->boundingSphere.center;
       w->EmitArray("center", { center.x, center.y, center.z });
     }
 
     {
-      JsonWriter::JsonScope s(w, "bounding_box", JsonWriter::CompoundType::Object);
+      JsonWriter::JsonScope s(w, "boundingBox", JsonWriter::CompoundType::Object);
       const vec3& center = (mesh->aabb.maxValue + mesh->aabb.minValue) / 2;
       const vec3& extents = (mesh->aabb.maxValue - mesh->aabb.minValue) / 2;
       w->EmitArray("center", { center.x, center.y, center.z });
@@ -272,6 +325,10 @@ static void ExportSceneInfo(const ImScene& scene, JsonWriter* w)
   }
 
   w->Emit("buffer", options.outputBase + ".dat");
+  {
+    JsonWriter::JsonScope s(w, "geometry", JsonWriter::CompoundType::Object);
+    ExportWorldGeometry(scene, w);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -686,6 +743,9 @@ static void CreateSDF3(const ImScene& scene, const Options& options, JsonWriter*
   minPos = minPos - 0.05f * span;
   maxPos = maxPos + 0.05f * span;
 
+  //minPos = vec3{-200, -200, -200};
+  //maxPos = vec3{+200, +200, +200};
+
   vec3 bottomLeft = minPos;
   vec3 cur = bottomLeft;
   vec3 inc = (maxPos - minPos) / (float)(gridRes - 1);
@@ -763,7 +823,8 @@ static void CreateSDF3(const ImScene& scene, const Options& options, JsonWriter*
 
         closestDistance = sqrtf(closestDistance);
         // check if the current point is behind the closest point (inside the shape)
-        float mul = Dot(Normalize(cur - closestPt), closestNormal) < 0 ? -1 : 1;
+        float dot = Dot(Normalize(cur - closestPt), closestNormal);
+        float mul = dot < 0 ? -1 : 1;
         sdf[i*gridRes*gridRes + j*gridRes + k] = mul * sqrtf(closestDistance);
 
         cur.x += inc.x;
@@ -775,14 +836,8 @@ static void CreateSDF3(const ImScene& scene, const Options& options, JsonWriter*
     cur.z += inc.z;
   }
 
-  size_t oldSize = buffer.size();
-  size_t dataSize = sdf.size() * sizeof(float);
-  buffer.resize(oldSize + dataSize);
-  memcpy(buffer.data() + oldSize, sdf.data(), dataSize);
-
   JsonWriter::JsonScope s(w, "sdf", JsonWriter::CompoundType::Object);
-  w->Emit("dataOffset", oldSize);
-  w->Emit("dataSize", dataSize);
+  AddToBuffer(sdf, "data", w);
   w->Emit("gridRes", gridRes);
   w->EmitArray("gridMin", { minPos.x, minPos.y, minPos.z });
   w->EmitArray("gridMax", { maxPos.x, maxPos.y, maxPos.z });

@@ -10,6 +10,9 @@ using namespace melange;
   for reading keyframes:
   http://www.plugincafe.com/forum/forum_posts.asp?TID=10446
 
+  mesh optimization:
+  https://github.com/zeux/meshoptimizer
+
 */
 
 //-----------------------------------------------------------------------------
@@ -79,22 +82,22 @@ bool melange::AlienPrimitiveObjectData::Execute()
   melange::BaseObject* baseObj = (melange::BaseObject*)GetNode();
   int objType = baseObj->GetType();
 
-//#define Ocube				5159
-//#define Osphere			5160
-//#define Oplatonic		5161
-//#define Ocone				5162
-//#define Otorus			5163
-//#define Odisc				5164
-//#define Otube				5165
-//#define Ofigure			5166
-//#define Opyramid		5167
-//#define Oplane			5168
-//#define Ofractal		5169
-//#define Ocylinder		5170
-//#define Ocapsule		5171
-//#define Ooiltank		5172
-//#define Orelief			5173
-//#define Osinglepoly	5174
+  //#define Ocube				5159
+  //#define Osphere			5160
+  //#define Oplatonic		5161
+  //#define Ocone				5162
+  //#define Otorus			5163
+  //#define Odisc				5164
+  //#define Otube				5165
+  //#define Ofigure			5166
+  //#define Opyramid		5167
+  //#define Oplane			5168
+  //#define Ofractal		5169
+  //#define Ocylinder		5170
+  //#define Ocapsule		5171
+  //#define Ooiltank		5172
+  //#define Orelief			5173
+  //#define Osinglepoly	5174
 
   const string name = CopyString(baseObj->GetName());
 
@@ -103,13 +106,11 @@ bool melange::AlienPrimitiveObjectData::Execute()
     case Ocube:
     {
       ImPrimitiveCube* prim = new ImPrimitiveCube(baseObj);
-      CopyTransform(baseObj->GetMl(), &prim->xformLocal);
-      CopyTransform(baseObj->GetMg(), &prim->xformGlobal);
+      CopyBaseTransform(baseObj, prim);
       prim->size = GetVectorParam<vec3>(baseObj, PRIM_CUBE_LEN);
       g_scene.primitives.push_back(prim);
       return true;
     }
-
   }
 
   LOG(1, "Skipping primitive object: %s\n", name.c_str());
@@ -124,8 +125,7 @@ bool melange::AlienNullObjectData::Execute()
 
   ImNullObject* nullObject = new ImNullObject(baseObj);
 
-  CopyTransform(baseObj->GetMl(), &nullObject->xformLocal);
-  CopyTransform(baseObj->GetMg(), &nullObject->xformGlobal);
+  CopyBaseTransform(baseObj, nullObject);
 
   g_scene.nullObjects.push_back(nullObject);
 
@@ -160,6 +160,7 @@ ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
     });
   }
   g_scene.melangeToImObject[melangeObj] = this;
+  g_scene.imObjectToMelange[this] = melangeObj;
 }
 
 //-----------------------------------------------------------------------------
@@ -175,10 +176,7 @@ bool melange::AlienCameraObjectData::Execute()
   int projectionType = GetInt32Param(baseObj, CAMERA_PROJECTION);
   if (projectionType != Pperspective)
   {
-    LOG(2,
-        "Skipping camera (%s) with unsupported projection type (%d)\n",
-        name.c_str(),
-        projectionType);
+    LOG(2, "Skipping camera (%s) with unsupported projection type (%d)\n", name.c_str(), projectionType);
     return false;
   }
 
@@ -199,14 +197,12 @@ bool melange::AlienCameraObjectData::Execute()
   //  }
   //}
 
-  CopyTransform(baseObj->GetMl(), &camera->xformLocal);
-  CopyTransform(baseObj->GetMg(), &camera->xformGlobal);
+  CopyBaseTransform(baseObj, camera.get());
 
   camera->verticalFov = GetFloatParam(baseObj, CAMERAOBJECT_FOV_VERTICAL);
-  camera->nearPlane =
-      GetInt32Param(baseObj, CAMERAOBJECT_NEAR_CLIPPING_ENABLE)
-          ? max(DEFAULT_NEAR_PLANE, GetFloatParam(baseObj, CAMERAOBJECT_NEAR_CLIPPING))
-          : DEFAULT_NEAR_PLANE;
+  camera->nearPlane = GetInt32Param(baseObj, CAMERAOBJECT_NEAR_CLIPPING_ENABLE)
+                          ? max(DEFAULT_NEAR_PLANE, GetFloatParam(baseObj, CAMERAOBJECT_NEAR_CLIPPING))
+                          : DEFAULT_NEAR_PLANE;
   camera->farPlane = GetInt32Param(baseObj, CAMERAOBJECT_FAR_CLIPPING_ENABLE)
                          ? GetFloatParam(baseObj, CAMERAOBJECT_FAR_CLIPPING)
                          : DEFAULT_FAR_PLANE;
@@ -244,9 +240,7 @@ bool melange::AlienLightObjectData::Execute()
 
   unique_ptr<ImLight> light = make_unique<ImLight>(baseObj);
 
-  CopyTransform(baseObj->GetMl(), &light->xformLocal);
-  CopyTransform(baseObj->GetMg(), &light->xformGlobal);
-
+  CopyBaseTransform(baseObj, light.get());
   light->color = GetVectorParam<Color>(baseObj, LIGHT_COLOR);
   light->intensity = GetFloatParam(baseObj, LIGHT_BRIGHTNESS);
 
@@ -441,7 +435,7 @@ static void CalcBoundingVolumes(const Vector* verts, int vertexCount, ImSphere* 
   }
 
   *sphere = {center, sqrtf(radius)};
-  *aabb = { minValue, maxValue };
+  *aabb = {minValue, maxValue};
 }
 
 //-----------------------------------------------------------------------------
@@ -459,7 +453,10 @@ static u32 FnvHash(const char* str, u32 d = 0x01000193)
 //-----------------------------------------------------------------------------
 struct FatVertex
 {
-  FatVertex() { memset(this, 0, sizeof(FatVertex)); }
+  FatVertex()
+  {
+    memset(this, 0, sizeof(FatVertex));
+  }
 
   Vector32 pos = Vector32(0, 0, 0);
   Vector32 normal = Vector32(0, 0, 0);
@@ -479,7 +476,10 @@ struct FatVertex
 
   struct Hash
   {
-    size_t operator()(const FatVertex& v) const { return v.GetHash(); }
+    size_t operator()(const FatVertex& v) const
+    {
+      return v.GetHash();
+    }
   };
 
   struct
@@ -597,8 +597,7 @@ static void GroupPolysByMaterial(
     if (btag->GetType() == Ttexture)
     {
       GeData data;
-      prevMaterial =
-          btag->GetParameter(TEXTURETAG_MATERIAL, data) ? (AlienMaterial*)data.GetLink() : NULL;
+      prevMaterial = btag->GetParameter(TEXTURETAG_MATERIAL, data) ? (AlienMaterial*)data.GetLink() : NULL;
       if (!prevMaterial)
         continue;
 
@@ -657,8 +656,7 @@ static void GroupPolysByMaterial(
   for (auto g : (*polysByMaterial))
   {
     AlienMaterial* mat = g.first;
-    const char* materialName =
-        mat == DEFAULT_MATERIAL_PTR ? "<default>" : CopyString(mat->GetName()).c_str();
+    const char* materialName = mat == DEFAULT_MATERIAL_PTR ? "<default>" : CopyString(mat->GetName()).c_str();
     LOG(2, "material: %s, %d polys\n", materialName, (int)g.second.size());
   }
 }
@@ -801,17 +799,13 @@ void CreateGeometry(PolygonObject* polyObj, ImMesh* mesh)
   unordered_map<int, vector<int>> vertexToFace;
   unordered_map<pair<int, int>, vector<int>> edgeToPolys;
 
-  auto CalcFaceNormal = [=](int a, int b, int c)
-  {
+  auto CalcFaceNormal = [=](int a, int b, int c) {
     vec3 e0 = verts[b] - verts[a];
     vec3 e1 = verts[c] - verts[a];
     return Normalize(Cross(e0, e1));
   };
 
-  auto MakeEdgeKey = [](int a, int b)
-  {
-    return make_pair(min(a, b), max(a, b));
-  };
+  auto MakeEdgeKey = [](int a, int b) { return make_pair(min(a, b), max(a, b)); };
 
   // iterate the polygons, triangulate quads, and save faces/face normals
   mesh->geometry.faces.reserve(polyObj->GetPolygonCount() * 2);
@@ -820,7 +814,7 @@ void CreateGeometry(PolygonObject* polyObj, ImMesh* mesh)
   for (int i = 0; i < polyObj->GetPolygonCount(); ++i)
   {
     const CPolygon& poly = polygons[i];
-    mesh->geometry.faces.push_back(ImMeshFace{ poly.a, poly.b, poly.c });
+    mesh->geometry.faces.push_back(ImMeshFace{poly.a, poly.b, poly.c});
     mesh->geometry.faceNormals.push_back(CalcFaceNormal(poly.a, poly.b, poly.c));
 
     vertexToFace[poly.a].push_back(faceIdx);
@@ -836,7 +830,7 @@ void CreateGeometry(PolygonObject* polyObj, ImMesh* mesh)
     // check if quad
     if (poly.c != poly.d)
     {
-      mesh->geometry.faces.push_back(ImMeshFace{ poly.a, poly.c, poly.d });
+      mesh->geometry.faces.push_back(ImMeshFace{poly.a, poly.c, poly.d});
       mesh->geometry.faceNormals.push_back(CalcFaceNormal(poly.a, poly.c, poly.d));
 
       vertexToFace[poly.d].push_back(faceIdx);
@@ -857,7 +851,7 @@ void CreateGeometry(PolygonObject* polyObj, ImMesh* mesh)
     int vtx = kv.first;
     const vector<int>& faces = kv.second;
 
-    vec3 n{ 0,0,0 };
+    vec3 n{0, 0, 0};
     for (size_t i = 0; i < faces.size(); ++i)
     {
       n += mesh->geometry.faceNormals[faces[i]];
@@ -895,9 +889,7 @@ bool AlienPolygonObjectData::Execute()
   GroupPolysByMaterial(polyObj, &polysByMaterial);
   CollectVertices(polyObj, polysByMaterial, mesh.get());
 
-  CopyTransform(polyObj->GetMl(), &mesh->xformLocal);
-  CopyTransform(polyObj->GetMg(), &mesh->xformGlobal);
-
+  CopyBaseTransform(baseObj, mesh.get());
   CreateGeometry(polyObj, mesh.get());
   g_scene.boundingBox = g_scene.boundingBox.Extend(mesh->geometry.aabb);
 

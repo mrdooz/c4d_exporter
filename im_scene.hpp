@@ -43,7 +43,7 @@ struct ImMeshFace
 //------------------------------------------------------------------------------
 struct ImMeshVertex
 {
-  float x, y, z, _;
+  float x, y, z;
 };
 
 //------------------------------------------------------------------------------
@@ -79,6 +79,13 @@ struct ImTrack
 };
 
 //------------------------------------------------------------------------------
+struct ImSampledTrack
+{
+  string name;
+  vector<float> values;
+};
+
+//------------------------------------------------------------------------------
 struct ImTransform
 {
   melange::Matrix mtx;
@@ -103,6 +110,7 @@ struct ImBaseObject
   u32 id = ~0u;
   bool valid = true;
 
+  vector<ImSampledTrack> sampledAnimTracks;
   vector<ImTrack> animTracks;
   vector<ImBaseObject*> children;
 };
@@ -251,6 +259,7 @@ struct ImMesh : public ImBaseObject
 struct ImScene
 {
   ImBaseObject* FindObject(melange::BaseObject* obj);
+  melange::BaseObject* FindMelangeObject(ImBaseObject* obj);
   ImMaterial* FindMaterial(melange::BaseMaterial* mat);
   vector<ImPrimitive*> primitives;
   vector<ImMesh*> meshes;
@@ -260,9 +269,14 @@ struct ImScene
   vector<ImMaterial*> materials;
   vector<ImSpline*> splines;
   unordered_map<melange::BaseObject*, ImBaseObject*> melangeToImObject;
+  unordered_map<ImBaseObject*, melange::BaseObject*> imObjectToMelange;
+  //unordered_map<melange::BaseObject*, vector<ImSampledTrack>> sampledAnimations;
 
   ImSphere boundingSphere;
   ImAABB boundingBox;
+
+  float startTime, endTime;
+  int fps;
 
   static u32 nextObjectId;
 };

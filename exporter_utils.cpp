@@ -8,6 +8,31 @@ IdGenerator g_MaterialId(1);
 unordered_map<int, melange::BaseMaterial*> g_MaterialIdToObj;
 
 //-----------------------------------------------------------------------------
+string ReplaceAll(const string& str, char toReplace, char replaceWith)
+{
+  string res(str);
+  size_t writeOfs = 0;
+  for (size_t i = 0; i < res.size(); ++i)
+  {
+    if (res[i] == toReplace)
+    {
+      if (replaceWith)
+      {
+        res[writeOfs] = replaceWith;
+        writeOfs++;
+      }
+    }
+    else
+    {
+      res[writeOfs++] = str[i];
+    }
+  }
+
+  res.resize(writeOfs);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
 void CopyTransform(const melange::Matrix& mtx, ImTransform* xform)
 {
   xform->mtx = mtx;
@@ -21,6 +46,17 @@ void CopyTransform(const melange::Matrix& mtx, ImTransform* xform)
   // NB: negating the rotation angle
   xform->quat = Vec4{(float)quat.v.x, (float)quat.v.y, (float)quat.v.z, (float)-quat.w};
   xform->scale = melange::Vector(Len(mtx.v1), Len(mtx.v2), Len(mtx.v3));
+}
+
+//-----------------------------------------------------------------------------
+void CopyBaseTransform(melange::BaseObject* melangeObj, ImBaseObject* imObj)
+{
+  // create global xform
+  // https://developers.maxon.net/docs/Cinema4DCPPSDK/html/page_freeze_transformation.html#section_freezetransformation_mathematicalbackground
+  melange::Matrix mg = melangeObj->GetUpMg() * melangeObj->GetMl();
+
+  CopyTransform(melangeObj->GetMl(), &imObj->xformLocal);
+  CopyTransform(mg, &imObj->xformGlobal);
 }
 
 //-----------------------------------------------------------------------------
@@ -66,25 +102,40 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* t
   if (!bl || !bl->GetFirstCTrack())
     return;
 
-  for (melange::CTrack* ct = bl->GetFirstCTrack(); ct; ct = ct->GetNext())
+  for (melange::CTrack* track = bl->GetFirstCTrack(); track; track = track->GetNext())
   {
-    ImTrack track;
-    track.name = CopyString(ct->GetName());
+    ImTrack imTrack;
+    imTrack.name = CopyString(track->GetName());
+
+    // sample the track
+    float inc = (g_scene.endTime - g_scene.startTime) / g_scene.fps;
+    int startFrame = g_scene.startTime * g_scene.fps;
+    int endFrame = g_scene.endTime * g_scene.fps;
+
+    float curTime = g_scene.startTime;
+    vector<float> values;
+    for (int curFrame = startFrame; curFrame <= endFrame; curFrame++)
+    {
+      float value = track->GetValue(g_Doc, melange::BaseTime((float)curFrame / g_scene.fps), g_scene.fps);
+      values.push_back(value);
+      curTime += inc;
+    }
+
 
     // time track
-    melange::CTrack* tt = ct->GetTimeTrack(bl->GetDocument());
+    melange::CTrack* tt = track->GetTimeTrack(bl->GetDocument());
     if (tt)
     {
       LOG(1, "Time track is unsupported");
     }
 
     // get DescLevel id
-    melange::DescID testID = ct->GetDescriptionID();
+    melange::DescID testID = track->GetDescriptionID();
     melange::DescLevel lv = testID[0];
-    ct->SetDescriptionID(ct, testID);
+    track->SetDescriptionID(track, testID);
 
     // get CCurve and print key frame data
-    melange::CCurve* cc = ct->GetCurve();
+    melange::CCurve* cc = track->GetCurve();
     if (cc)
     {
       ImCurve curve;
@@ -94,24 +145,24 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* t
       {
         melange::CKey* ck = cc->GetKey(k);
         melange::BaseTime t = ck->GetTime();
-        if (ct->GetTrackCategory() == melange::PSEUDO_VALUE)
+        if (track->GetTrackCategory() == melange::PSEUDO_VALUE)
         {
           curve.keyframes.push_back(
             ImKeyframe{ (int)t.GetFrame(g_Doc->GetFps()), (float)ck->GetValue() });
         }
-        else if (ct->GetTrackCategory() == melange::PSEUDO_PLUGIN && ct->GetType() == CTpla)
+        else if (track->GetTrackCategory() == melange::PSEUDO_PLUGIN && track->GetType() == CTpla)
         {
           LOG(1, "Plugin keyframes are unsupported");
         }
-        else if (ct->GetTrackCategory() == melange::PSEUDO_PLUGIN && ct->GetType() == CTmorph)
+        else if (track->GetTrackCategory() == melange::PSEUDO_PLUGIN && track->GetType() == CTmorph)
         {
           LOG(1, "Morph keyframes are unsupported");
         }
       }
 
-      track.curves.push_back(curve);
+      imTrack.curves.push_back(curve);
     }
-    tracks->push_back(track);
+    tracks->push_back(imTrack);
   }
 }
 
