@@ -179,13 +179,30 @@ void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
   exporterMaterial->components.push_back(
     ImMaterialComponent{ "color", Color(0.5f, 0.5f, 0.5f), "", 1 });
 
-  for (melange::BaseMaterial* mat = c4dDoc->GetFirstMaterial(); mat; mat = mat->GetNext())
+  for (melange::BaseMaterial* baseMaterial = c4dDoc->GetFirstMaterial(); baseMaterial; baseMaterial = baseMaterial->GetNext())
   {
+    int materialType = baseMaterial->GetType();
+
     // check if the material is a standard material
-    if (mat->GetType() != Mmaterial)
+    if (materialType != Mmaterial)
       continue;
 
+    melange::Material* mat = static_cast<melange::Material*>(baseMaterial);
     string name = CopyString(mat->GetName());
+
+    for (melange::BaseShader* baseShader = mat->GetFirstShader(); baseShader; baseShader = baseShader->GetNext())
+    {
+      int shaderType = baseShader->GetType();
+      if (shaderType == Xgradient)
+      {
+        melange::GeData dd;
+        melange::BaseContainer* data = baseShader->GetDataInstance();
+        bool res = baseShader->GetParameter(CUSTOMDATATYPE_GRADIENT, dd);
+        int a = 10;
+      }
+    }
+
+
 
     g_scene.materials.push_back(new ImMaterial());
     ImMaterial* exporterMaterial = g_scene.materials.back();

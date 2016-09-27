@@ -2,6 +2,7 @@
 #include "json_writer.hpp"
 #include "exporter_utils.hpp"
 #include "sdf_gen.hpp"
+#include "bit_utils.hpp"
 
 #if WITH_EMBREE
 #include <c:/projects/embree/common/math/affinespace.h>
@@ -41,7 +42,7 @@ static unordered_map<ImLight::Type, string> lightTypeToString = {
     {ImLight::Type::Area, "area"},
 };
 
-static void ExportAnimationTracks(const ImBaseObject* obj, JsonWriter* w);
+static void ExportAnimationTracks(ImBaseObject* obj, JsonWriter* w);
 
 //------------------------------------------------------------------------------
 static void AddToBuffer(const char* data, size_t len, const string& name, JsonWriter* w)
@@ -60,7 +61,7 @@ static void AddToBuffer(const vector<T>& v, const string& name, JsonWriter* w)
 }
 
 //------------------------------------------------------------------------------
-static void ExportBase(const ImBaseObject* obj, JsonWriter* w)
+static void ExportBase(ImBaseObject* obj, JsonWriter* w)
 {
   w->Emit("name", obj->name);
   w->Emit("id", obj->id);
@@ -218,7 +219,7 @@ static void ExportMeshData(ImMesh* mesh, JsonWriter* w)
 }
 
 //------------------------------------------------------------------------------
-static void ExportAnimationTracks(const ImBaseObject* obj, JsonWriter* w)
+static void ExportAnimationTracks(ImBaseObject* obj, JsonWriter* w)
 {
   if (obj->sampledAnimTracks.empty())
     return;
@@ -226,10 +227,62 @@ static void ExportAnimationTracks(const ImBaseObject* obj, JsonWriter* w)
   {
     JsonWriter::JsonScope s(w, "animTracks", JsonWriter::CompoundType::Object);
 
-    for (const ImSampledTrack& track : obj->sampledAnimTracks)
+    for (ImSampledTrack& track : obj->sampledAnimTracks)
     {
       JsonWriter::JsonScope s(w, track.name, JsonWriter::CompoundType::Object);
-      AddToBuffer(track.values, "data", w);
+
+      // determine best encoding
+      float minValue = +FLT_MAX;
+      float maxValue = -FLT_MAX;
+
+      for (float v : track.values)
+      {
+        minValue = min(minValue, v);
+        maxValue = max(maxValue, v);
+      }
+
+      float span = maxValue - minValue;
+
+      for (size_t i = 0; i < track.values.size(); ++i)
+      {
+        track.values[i] = (track.values[i] - minValue) / span;
+      }
+
+      float maxErr = 0.001f;
+      u32 numBits = 8;
+      for (; numBits < 32; ++numBits)
+      {
+        bool precisionError = false;
+        for (float v : track.values)
+        {
+          int m = 1 << (numBits - 1);
+          float err = fabs(v - (float)(int(m * v + 0.5f)) / m);
+          if (err > maxErr)
+          {
+            precisionError = true;
+            break;
+          }
+        }
+
+        if (!precisionError)
+          break;
+      }
+
+      vector<u8> data;
+      BitWriter writer;
+      for (float v : track.values)
+      {
+        int m = 1 << (numBits - 1);
+        u32 vv = u32(m * v + 0.5f);
+        writer.Write(vv, numBits);
+      }
+
+      w->Emit("minValue", minValue);
+      w->Emit("maxValue", maxValue);
+      w->Emit("bitLength", numBits);
+      writer.CopyOut(&data);
+
+      AddToBuffer(data, "data", w);
     }
   }
 }
@@ -267,7 +320,7 @@ static void ExportPrimitives(const vector<ImPrimitive*>& primitives, JsonWriter*
 {
   JsonWriter::JsonScope s(w, "primitives", JsonWriter::CompoundType::Object);
 
-  for (const ImPrimitive* prim : primitives)
+  for (ImPrimitive* prim : primitives)
   {
     switch (prim->type)
     {

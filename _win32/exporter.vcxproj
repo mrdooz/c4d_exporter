@@ -162,6 +162,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\bit_utils.cpp" />
     <ClCompile Include="..\contrib\sdf\makelevelset3.cpp" />
     <ClCompile Include="..\exporter_utils.cpp" />
     <ClCompile Include="..\im_exporter.cpp" />
@@ -183,6 +184,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\arg_parse.hpp" />
+    <ClInclude Include="..\bit_utils.hpp" />
     <ClInclude Include="..\compress\forsythtriangleorderoptimizer.h" />
     <ClInclude Include="..\compress\indexbuffercompression.h" />
     <ClInclude Include="..\compress\indexbuffercompressionformat.h" />
