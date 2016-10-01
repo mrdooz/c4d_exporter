@@ -195,14 +195,45 @@ void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
       int shaderType = baseShader->GetType();
       if (shaderType == Xgradient)
       {
-        melange::GeData dd;
-        melange::BaseContainer* data = baseShader->GetDataInstance();
-        bool res = baseShader->GetParameter(CUSTOMDATATYPE_GRADIENT, dd);
-        int a = 10;
+        //printf("Shader - %s (%d) : ", GetObjectTypeName(shaderType), shaderType);
+        melange::GeData data;
+        baseShader->GetParameter(melange::SLA_GRADIENT_GRADIENT, data);
+        melange::Gradient *pGrad = (melange::Gradient*)data.GetCustomDataType(CUSTOMDATATYPE_GRADIENT);
+        melange::Int32 kcnt = pGrad->GetKnotCount();
+        printf(" %d Knots\n", (int)kcnt);
+
+        // silly hack because melange defines its own melange::swap..
+        struct KnotProxy
+        {
+          melange::GradientKnot _;
+        };
+
+        vector<KnotProxy> knots;
+
+        for (melange::Int32 k = 0; k < kcnt; k++)
+        {
+          knots.push_back(KnotProxy{pGrad->GetKnot(k)});
+        }
+
+        sort(
+            knots.begin(),
+            knots.end(),
+            [](const KnotProxy& lhs, const KnotProxy& rhs) {
+              return lhs._.pos < rhs._.pos;
+            });
+
+        for (const auto& kn : knots)
+        {
+          printf(
+              "Knot: pos: %.3f, bias: %.3f, %.1f/%.1f/%.1f\n",
+              kn._.pos,
+              kn._.bias,
+              kn._.col.x * 255.0,
+              kn._.col.y * 255.0,
+              kn._.col.z * 255.0);
+        }
       }
     }
-
-
 
     g_scene.materials.push_back(new ImMaterial());
     ImMaterial* exporterMaterial = g_scene.materials.back();

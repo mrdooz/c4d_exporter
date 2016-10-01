@@ -45,5 +45,19 @@ typedef int16_t s16;
 typedef int32_t s32;
 typedef int64_t s64;
 
-using namespace std;
-
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
+using std::hash;
+using std::min;
+using std::max;
+using std::unordered_map;
+using std::unordered_set;
+using std::function;
+using std::initializer_list;
+using std::map;
+using std::deque;
+using std::shared_ptr;
+using std::unique_ptr;
+using std::make_unique;

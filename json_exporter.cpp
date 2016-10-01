@@ -248,7 +248,7 @@ static void ExportAnimationTracks(ImBaseObject* obj, JsonWriter* w)
         track.values[i] = (track.values[i] - minValue) / span;
       }
 
-      float maxErr = 0.001f;
+      float maxErr = 0.0001f;
       u32 numBits = 8;
       for (; numBits < 32; ++numBits)
       {
@@ -256,7 +256,7 @@ static void ExportAnimationTracks(ImBaseObject* obj, JsonWriter* w)
         for (float v : track.values)
         {
           int m = 1 << (numBits - 1);
-          float err = fabs(v - (float)(int(m * v + 0.5f)) / m);
+          float err = fabs(v - (float)(int(m * v)) / m);
           if (err > maxErr)
           {
             precisionError = true;
@@ -273,10 +273,12 @@ static void ExportAnimationTracks(ImBaseObject* obj, JsonWriter* w)
       for (float v : track.values)
       {
         int m = 1 << (numBits - 1);
-        u32 vv = u32(m * v + 0.5f);
+        u32 vv = u32(m * v);
         writer.Write(vv, numBits);
       }
 
+      w->Emit("fps", g_scene.fps);
+      w->Emit("numKeys", track.values.size());
       w->Emit("minValue", minValue);
       w->Emit("maxValue", maxValue);
       w->Emit("bitLength", numBits);
