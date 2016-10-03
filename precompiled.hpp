@@ -47,6 +47,7 @@ typedef int64_t s64;
 
 using std::vector;
 using std::string;
+using std::wstring;
 using std::pair;
 using std::make_pair;
 using std::hash;

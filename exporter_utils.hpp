@@ -23,12 +23,6 @@ string CopyString(const melange::String& str);
 string ReplaceAll(const string& str, char toReplace, char replaceWith);
 
 
-#define LOG(lvl, fmt, ...)                                                                         \
-  if (options.loglevel >= lvl)                                                                     \
-    printf(fmt, __VA_ARGS__);                                                                      \
-  if (options.logfile)                                                                             \
-    fprintf(options.logfile, fmt, __VA_ARGS__);
-
 //-----------------------------------------------------------------------------
 template <typename R, typename T>
 R GetVectorParam(T* obj, int paramId)
@@ -64,7 +58,15 @@ int GetInt32Param(T* obj, int paramId)
 {
   melange::GeData data;
   obj->GetParameter(paramId, data);
-  return (float)data.GetInt32();
+  return (int)data.GetInt32();
+}
+
+//-----------------------------------------------------------------------------
+template <typename T>
+int GetInt32Data(T* obj, int paramId)
+{
+  melange::GeData data = obj->GetData(paramId);
+  return (int)data.GetInt32();
 }
 
 //-----------------------------------------------------------------------------
@@ -84,6 +86,14 @@ struct IdGenerator
   int _nextId;
 };
 
+//------------------------------------------------------------------------------
+template <typename T>
+void operator+=(vector<T>& lhs, const vector<T>& rhs)
+{
+  lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+}
+
 extern IdGenerator g_ObjectId;
 extern IdGenerator g_MaterialId;
 extern unordered_map<int, melange::BaseMaterial*> g_MaterialIdToObj;
+

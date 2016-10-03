@@ -185,8 +185,8 @@ struct ImMaterialComponent
 {
   string name;
   Color color;
-  string texture;
   float brightness;
+  melange::BaseShader* shader;
 };
 
 //------------------------------------------------------------------------------

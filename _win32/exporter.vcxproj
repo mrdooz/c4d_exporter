@@ -108,17 +108,22 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;__PC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;__PC;WITH_DLIB_MATH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableSpecificWarnings>4996; 4200</DisableSpecificWarnings>
       <PrecompiledHeaderFile>precompiled.hpp</PrecompiledHeaderFile>
       <ForcedIncludeFiles>precompiled.hpp</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>C:\projects\c4d_exporter\contrib\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>melangelib_debug.lib;jpeglib_debug.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -151,6 +156,7 @@
       <DisableSpecificWarnings>4996; 4200</DisableSpecificWarnings>
       <PrecompiledHeaderFile>precompiled.hpp</PrecompiledHeaderFile>
       <ForcedIncludeFiles>precompiled.hpp</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>C:\projects\c4d_exporter\contrib\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,7 +168,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\bit_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\arena_allocator.cpp" />
+    <ClCompile Include="..\contrib\dlib\bit_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\checked_sequence.cpp" />
+    <ClCompile Include="..\contrib\dlib\error.cpp" />
+    <ClCompile Include="..\contrib\dlib\filewatcher_win32.cpp" />
+    <ClCompile Include="..\contrib\dlib\file_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\file_watcher.cpp" />
+    <ClCompile Include="..\contrib\dlib\free_list.cpp" />
+    <ClCompile Include="..\contrib\dlib\l2.cpp" />
+    <ClCompile Include="..\contrib\dlib\math_ops.cpp" />
+    <ClCompile Include="..\contrib\dlib\math_types.cpp" />
+    <ClCompile Include="..\contrib\dlib\math_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\mesh_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\parse_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\path_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\random.cpp" />
+    <ClCompile Include="..\contrib\dlib\stop_watch.cpp" />
+    <ClCompile Include="..\contrib\dlib\string_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\timer.cpp" />
+    <ClCompile Include="..\contrib\dlib\time_utils.cpp" />
+    <ClCompile Include="..\contrib\dlib\utils.cpp" />
     <ClCompile Include="..\contrib\sdf\makelevelset3.cpp" />
     <ClCompile Include="..\exporter_utils.cpp" />
     <ClCompile Include="..\im_exporter.cpp" />
@@ -184,7 +210,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\arg_parse.hpp" />
-    <ClInclude Include="..\bit_utils.hpp" />
     <ClInclude Include="..\compress\forsythtriangleorderoptimizer.h" />
     <ClInclude Include="..\compress\indexbuffercompression.h" />
     <ClInclude Include="..\compress\indexbuffercompressionformat.h" />
@@ -192,6 +217,36 @@
     <ClInclude Include="..\compress\indexcompressionconstants.h" />
     <ClInclude Include="..\compress\readbitstream.h" />
     <ClInclude Include="..\compress\writebitstream.h" />
+    <ClInclude Include="..\contrib\dlib\append_buffer.hpp" />
+    <ClInclude Include="..\contrib\dlib\arena_allocator.hpp" />
+    <ClInclude Include="..\contrib\dlib\bit_flags.hpp" />
+    <ClInclude Include="..\contrib\dlib\bit_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\checked_sequence.hpp" />
+    <ClInclude Include="..\contrib\dlib\circular_buffer.hpp" />
+    <ClInclude Include="..\contrib\dlib\error.hpp" />
+    <ClInclude Include="..\contrib\dlib\filewatcher_win32.hpp" />
+    <ClInclude Include="..\contrib\dlib\file_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\file_watcher.hpp" />
+    <ClInclude Include="..\contrib\dlib\fixed_deque.hpp" />
+    <ClInclude Include="..\contrib\dlib\free_list.hpp" />
+    <ClInclude Include="..\contrib\dlib\json_writer.hpp" />
+    <ClInclude Include="..\contrib\dlib\l2.hpp" />
+    <ClInclude Include="..\contrib\dlib\math_ops.hpp" />
+    <ClInclude Include="..\contrib\dlib\math_types.hpp" />
+    <ClInclude Include="..\contrib\dlib\math_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\memory_block.hpp" />
+    <ClInclude Include="..\contrib\dlib\mesh_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\parse_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\path_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\random.hpp" />
+    <ClInclude Include="..\contrib\dlib\rolling_average.hpp" />
+    <ClInclude Include="..\contrib\dlib\stop_watch.hpp" />
+    <ClInclude Include="..\contrib\dlib\string_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\timer.hpp" />
+    <ClInclude Include="..\contrib\dlib\time_utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\tiny_format.hpp" />
+    <ClInclude Include="..\contrib\dlib\utils.hpp" />
+    <ClInclude Include="..\contrib\dlib\vertex_types.hpp" />
     <ClInclude Include="..\contrib\sdf\array1.h" />
     <ClInclude Include="..\contrib\sdf\array2.h" />
     <ClInclude Include="..\contrib\sdf\array3.h" />
@@ -210,6 +265,9 @@
     <ClInclude Include="..\melange_helpers.hpp" />
     <ClInclude Include="..\precompiled.hpp" />
     <ClInclude Include="..\sdf_gen.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\contrib\dlib\parse_utils.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

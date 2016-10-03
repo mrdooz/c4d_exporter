@@ -30,6 +30,8 @@ static unordered_map<int, string> areaLightShapeToString = {
     {LIGHT_AREADETAILS_SHAPE_LINE, "line"},
 };
 
+extern ExportInstance g_ExportInstance;
+
 //-----------------------------------------------------------------------------
 static void ExportSpline(melange::BaseObject* obj)
 {
@@ -53,7 +55,7 @@ static void ExportSpline(melange::BaseObject* obj)
     s->points.push_back(points[i].z);
   }
 
-  g_scene.splines.push_back(s);
+  g_ExportInstance.scene.splines.push_back(s);
 }
 
 //-----------------------------------------------------------------------------
@@ -108,12 +110,12 @@ bool melange::AlienPrimitiveObjectData::Execute()
       ImPrimitiveCube* prim = new ImPrimitiveCube(baseObj);
       CopyBaseTransform(baseObj, prim);
       prim->size = GetVectorParam<vec3>(baseObj, PRIM_CUBE_LEN);
-      g_scene.primitives.push_back(prim);
+      g_ExportInstance.scene.primitives.push_back(prim);
       return true;
     }
   }
 
-  LOG(1, "Skipping primitive object: %s\n", name.c_str());
+  g_ExportInstance.Log(1, "Skipping primitive object: %s\n", name.c_str());
   return true;
 }
 
@@ -127,40 +129,11 @@ bool melange::AlienNullObjectData::Execute()
 
   CopyBaseTransform(baseObj, nullObject);
 
-  g_scene.nullObjects.push_back(nullObject);
+  g_ExportInstance.scene.nullObjects.push_back(nullObject);
 
   ExportSplineChildren(baseObj);
 
   return true;
-}
-
-//-----------------------------------------------------------------------------
-ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
-    : melangeObj(melangeObj)
-    , parent(g_scene.FindObject(melangeObj->GetUp()))
-    , name(CopyString(melangeObj->GetName()))
-    , id(ImScene::nextObjectId++)
-{
-  LOG(1, "Exporting: %s\n", name.c_str());
-  melange::BaseObject* melangeParent = melangeObj->GetUp();
-  if ((melangeParent != nullptr) ^ (parent != nullptr))
-  {
-    LOG(1,
-        "  Unable to find parent! (%s)\n",
-        melangeParent ? CopyString(melangeParent->GetName()).c_str() : "");
-    valid = false;
-  }
-
-  // add the object to its parent's children
-  if (melangeParent && parent)
-  {
-    g_deferredFunctions.push_back([this]() {
-      parent->children.push_back(this);
-      return true;
-    });
-  }
-  g_scene.melangeToImObject[melangeObj] = this;
-  g_scene.imObjectToMelange[this] = melangeObj;
 }
 
 //-----------------------------------------------------------------------------
@@ -176,7 +149,7 @@ bool melange::AlienCameraObjectData::Execute()
   int projectionType = GetInt32Param(baseObj, CAMERA_PROJECTION);
   if (projectionType != Pperspective)
   {
-    LOG(2, "Skipping camera (%s) with unsupported projection type (%d)\n", name.c_str(), projectionType);
+    g_ExportInstance.Log(2, "Skipping camera (%s) with unsupported projection type (%d)\n", name.c_str(), projectionType);
     return false;
   }
 
@@ -192,7 +165,7 @@ bool melange::AlienCameraObjectData::Execute()
   //  bool isNullParent = parent && parent->GetType() == OBJECT_NULL;
   //  if (!isNullParent)
   //  {
-  //    LOG(1, "Camera's %s parent isn't a null object!\n", name.c_str());
+  //    g_ExportInstance.Log(1, "Camera's %s parent isn't a null object!\n", name.c_str());
   //    return false;
   //  }
   //}
@@ -213,18 +186,18 @@ bool melange::AlienCameraObjectData::Execute()
     ImCamera* cameraPtr = camera.get();
 
     // defer finding the target object until all objects have been parsed
-    g_deferredFunctions.push_back([=]() {
-      cameraPtr->targetObj = g_scene.FindObject(targetObj);
+    g_ExportInstance.deferredFunctions.push_back([=]() {
+      cameraPtr->targetObj = g_ExportInstance.scene.FindObject(targetObj);
       if (!cameraPtr->targetObj)
       {
-        LOG(1, "Unable to find target object: %s", CopyString(targetObj->GetName()).c_str());
+        g_ExportInstance.Log(1, "Unable to find target object: %s", CopyString(targetObj->GetName()).c_str());
         return false;
       }
       return true;
     });
   }
 
-  g_scene.cameras.push_back(camera.release());
+  g_ExportInstance.scene.cameras.push_back(camera.release());
 
   return true;
 }
@@ -270,7 +243,7 @@ bool melange::AlienLightObjectData::Execute()
     auto it = areaLightShapeToString.find(areaLightShape);
     if (it == areaLightShapeToString.end())
     {
-      LOG(1, "Unsupported area light type: %s (%d)\n", name.c_str(), areaLightShape);
+      g_ExportInstance.Log(1, "Unsupported area light type: %s (%d)\n", name.c_str(), areaLightShape);
       return false;
     }
 
@@ -281,11 +254,11 @@ bool melange::AlienLightObjectData::Execute()
   }
   else
   {
-    LOG(1, "Unsupported light type: %s\n", name.c_str());
+    g_ExportInstance.Log(1, "Unsupported light type: %s\n", name.c_str());
     return true;
   }
 
-  g_scene.lights.push_back(light.release());
+  g_ExportInstance.scene.lights.push_back(light.release());
 
   return true;
 }
@@ -657,7 +630,7 @@ static void GroupPolysByMaterial(
   {
     AlienMaterial* mat = g.first;
     const char* materialName = mat == DEFAULT_MATERIAL_PTR ? "<default>" : CopyString(mat->GetName()).c_str();
-    LOG(2, "material: %s, %d polys\n", materialName, (int)g.second.size());
+    g_ExportInstance.Log(2, "material: %s, %d polys\n", materialName, (int)g.second.size());
   }
 }
 
@@ -703,7 +676,7 @@ static void CollectVertices(
   for (const pair<AlienMaterial*, vector<int>>& kv : polysByMaterial)
   {
     ImMesh::MaterialGroup mg;
-    ImMaterial* mat = g_scene.FindMaterial(kv.first);
+    ImMaterial* mat = g_ExportInstance.scene.FindMaterial(kv.first);
     mg.materialId = mat ? mat->id : ~0;
     mg.startIndex = startIdx;
 
@@ -891,9 +864,9 @@ bool AlienPolygonObjectData::Execute()
 
   CopyBaseTransform(baseObj, mesh.get());
   CreateGeometry(polyObj, mesh.get());
-  g_scene.boundingBox = g_scene.boundingBox.Extend(mesh->geometry.aabb);
+  g_ExportInstance.scene.boundingBox = g_ExportInstance.scene.boundingBox.Extend(mesh->geometry.aabb);
 
-  g_scene.meshes.push_back(mesh.release());
+  g_ExportInstance.scene.meshes.push_back(mesh.release());
 
   return true;
 }

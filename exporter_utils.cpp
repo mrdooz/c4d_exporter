@@ -6,6 +6,7 @@
 IdGenerator g_ObjectId(0);
 IdGenerator g_MaterialId(1);
 unordered_map<int, melange::BaseMaterial*> g_MaterialIdToObj;
+extern ExportInstance g_ExportInstance;
 
 //-----------------------------------------------------------------------------
 string ReplaceAll(const string& str, char toReplace, char replaceWith)
@@ -108,25 +109,25 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* t
     imTrack.name = CopyString(track->GetName());
 
     // sample the track
-    float inc = (g_scene.endTime - g_scene.startTime) / g_scene.fps;
-    int startFrame = g_scene.startTime * g_scene.fps;
-    int endFrame = g_scene.endTime * g_scene.fps;
+    float inc = (g_ExportInstance.scene.endTime - g_ExportInstance.scene.startTime) / g_ExportInstance.scene.fps;
+    int startFrame = g_ExportInstance.scene.startTime * g_ExportInstance.scene.fps;
+    int endFrame = g_ExportInstance.scene.endTime * g_ExportInstance.scene.fps;
 
-    float curTime = g_scene.startTime;
+    float curTime = g_ExportInstance.scene.startTime;
     vector<float> values;
     for (int curFrame = startFrame; curFrame <= endFrame; curFrame++)
     {
-      float value = track->GetValue(g_Doc, melange::BaseTime((float)curFrame / g_scene.fps), g_scene.fps);
+      float value = track->GetValue(
+          g_ExportInstance.doc, melange::BaseTime((float)curFrame / g_ExportInstance.scene.fps), g_ExportInstance.scene.fps);
       values.push_back(value);
       curTime += inc;
     }
-
 
     // time track
     melange::CTrack* tt = track->GetTimeTrack(bl->GetDocument());
     if (tt)
     {
-      LOG(1, "Time track is unsupported");
+      g_ExportInstance.Log(1, "Time track is unsupported");
     }
 
     // get DescLevel id
@@ -147,16 +148,15 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* t
         melange::BaseTime t = ck->GetTime();
         if (track->GetTrackCategory() == melange::PSEUDO_VALUE)
         {
-          curve.keyframes.push_back(
-            ImKeyframe{ (int)t.GetFrame(g_Doc->GetFps()), (float)ck->GetValue() });
+          curve.keyframes.push_back(ImKeyframe{(int)t.GetFrame(g_ExportInstance.doc->GetFps()), (float)ck->GetValue()});
         }
         else if (track->GetTrackCategory() == melange::PSEUDO_PLUGIN && track->GetType() == CTpla)
         {
-          LOG(1, "Plugin keyframes are unsupported");
+          g_ExportInstance.Log(1, "Plugin keyframes are unsupported");
         }
         else if (track->GetTrackCategory() == melange::PSEUDO_PLUGIN && track->GetType() == CTmorph)
         {
-          LOG(1, "Morph keyframes are unsupported");
+          g_ExportInstance.Log(1, "Morph keyframes are unsupported");
         }
       }
 
@@ -170,16 +170,16 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* t
 void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
 {
   // add default material
-  g_scene.materials.push_back(new ImMaterial());
-  ImMaterial* exporterMaterial = g_scene.materials.back();
+  g_ExportInstance.scene.materials.push_back(new ImMaterial());
+  ImMaterial* exporterMaterial = g_ExportInstance.scene.materials.back();
   exporterMaterial->mat = nullptr;
   exporterMaterial->name = "<default>";
   exporterMaterial->id = ~0u;
 
-  exporterMaterial->components.push_back(
-    ImMaterialComponent{ "color", Color(0.5f, 0.5f, 0.5f), "", 1 });
+  exporterMaterial->components.push_back(ImMaterialComponent{"color", Color(0.5f, 0.5f, 0.5f), 1, nullptr});
 
-  for (melange::BaseMaterial* baseMaterial = c4dDoc->GetFirstMaterial(); baseMaterial; baseMaterial = baseMaterial->GetNext())
+  for (melange::BaseMaterial* baseMaterial = c4dDoc->GetFirstMaterial(); baseMaterial;
+       baseMaterial = baseMaterial->GetNext())
   {
     int materialType = baseMaterial->GetType();
 
@@ -190,79 +190,38 @@ void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
     melange::Material* mat = static_cast<melange::Material*>(baseMaterial);
     string name = CopyString(mat->GetName());
 
-    for (melange::BaseShader* baseShader = mat->GetFirstShader(); baseShader; baseShader = baseShader->GetNext())
-    {
-      int shaderType = baseShader->GetType();
-      if (shaderType == Xgradient)
-      {
-        //printf("Shader - %s (%d) : ", GetObjectTypeName(shaderType), shaderType);
-        melange::GeData data;
-        baseShader->GetParameter(melange::SLA_GRADIENT_GRADIENT, data);
-        melange::Gradient *pGrad = (melange::Gradient*)data.GetCustomDataType(CUSTOMDATATYPE_GRADIENT);
-        melange::Int32 kcnt = pGrad->GetKnotCount();
-        printf(" %d Knots\n", (int)kcnt);
 
-        // silly hack because melange defines its own melange::swap..
-        struct KnotProxy
-        {
-          melange::GradientKnot _;
-        };
-
-        vector<KnotProxy> knots;
-
-        for (melange::Int32 k = 0; k < kcnt; k++)
-        {
-          knots.push_back(KnotProxy{pGrad->GetKnot(k)});
-        }
-
-        sort(
-            knots.begin(),
-            knots.end(),
-            [](const KnotProxy& lhs, const KnotProxy& rhs) {
-              return lhs._.pos < rhs._.pos;
-            });
-
-        for (const auto& kn : knots)
-        {
-          printf(
-              "Knot: pos: %.3f, bias: %.3f, %.1f/%.1f/%.1f\n",
-              kn._.pos,
-              kn._.bias,
-              kn._.col.x * 255.0,
-              kn._.col.y * 255.0,
-              kn._.col.z * 255.0);
-        }
-      }
-    }
-
-    g_scene.materials.push_back(new ImMaterial());
-    ImMaterial* exporterMaterial = g_scene.materials.back();
+    g_ExportInstance.scene.materials.push_back(new ImMaterial());
+    ImMaterial* exporterMaterial = g_ExportInstance.scene.materials.back();
     exporterMaterial->mat = mat;
     exporterMaterial->name = name;
 
     // check if the given channel is used in the material
     if (((melange::Material*)mat)->GetChannelState(CHANNEL_COLOR))
     {
-      exporterMaterial->components.push_back(ImMaterialComponent{ "color",
-        GetVectorParam<Color>(mat, melange::MATERIAL_COLOR_COLOR),
-        "",
-        GetFloatParam(mat, melange::MATERIAL_COLOR_BRIGHTNESS) });
+      exporterMaterial->components.push_back(
+          ImMaterialComponent{"color",
+                              GetVectorParam<Color>(mat, melange::MATERIAL_COLOR_COLOR),
+                              GetFloatParam(mat, melange::MATERIAL_COLOR_BRIGHTNESS),
+                              mat->GetShader(melange::MATERIAL_COLOR_SHADER)});
     }
 
     if (((melange::Material*)mat)->GetChannelState(CHANNEL_REFLECTION))
     {
-      exporterMaterial->components.push_back(ImMaterialComponent{ "refl",
-        GetVectorParam<Color>(mat, melange::MATERIAL_REFLECTION_COLOR),
-        "",
-        GetFloatParam(mat, melange::MATERIAL_REFLECTION_BRIGHTNESS) });
+      exporterMaterial->components.push_back(
+          ImMaterialComponent{"refl",
+                              GetVectorParam<Color>(mat, melange::MATERIAL_REFLECTION_COLOR),
+                              GetFloatParam(mat, melange::MATERIAL_REFLECTION_BRIGHTNESS),
+                              mat->GetShader(melange::MATERIAL_REFLECTION_SHADER)});
     }
 
     if (((melange::Material*)mat)->GetChannelState(CHANNEL_LUMINANCE))
     {
-      exporterMaterial->components.push_back(ImMaterialComponent{ "lumi",
-        GetVectorParam<Color>(mat, melange::MATERIAL_LUMINANCE_COLOR),
-        "",
-        GetFloatParam(mat, melange::MATERIAL_LUMINANCE_BRIGHTNESS) });
+      exporterMaterial->components.push_back(
+          ImMaterialComponent{"lumi",
+                              GetVectorParam<Color>(mat, melange::MATERIAL_LUMINANCE_COLOR),
+                              GetFloatParam(mat, melange::MATERIAL_LUMINANCE_BRIGHTNESS),
+                              mat->GetShader(melange::MATERIAL_LUMINANCE_SHADER)});
     }
   }
 }
@@ -270,7 +229,7 @@ void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
 //-----------------------------------------------------------------------------
 void CollectMaterials2(melange::AlienBaseDocument* c4dDoc)
 {
-  // add default material
+// add default material
 #if 0
   shared_ptr<scene::Material> defaultMaterial = make_shared<scene::Material>();
   defaultMaterial->name = "<default>";

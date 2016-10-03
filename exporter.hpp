@@ -42,16 +42,22 @@ struct SceneStats
   int dataSize = 0;
 };
 
-extern ImScene g_scene;
-extern Options options;
-extern vector<function<bool()>> g_deferredFunctions;
-
 namespace melange
 {
   class AlienBaseDocument;
   class HyperFile;
 }
 
-extern melange::AlienBaseDocument* g_Doc;
-extern melange::HyperFile* g_File;
+struct ExportInstance
+{
+  void Log(int level, const char* fmt, ...) const;
+  ImScene scene;
+  Options options;
+  // Fixup functions called after the scene has been read and processed.
+  vector<function<bool()>> deferredFunctions;
+  melange::AlienBaseDocument* doc;
+  melange::HyperFile* file;
+};
+
+extern ExportInstance g_ExportInstance;
 
