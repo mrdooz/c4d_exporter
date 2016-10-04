@@ -109,16 +109,16 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* t
     imTrack.name = CopyString(track->GetName());
 
     // sample the track
-    float inc = (g_ExportInstance.scene.endTime - g_ExportInstance.scene.startTime) / g_ExportInstance.scene.fps;
-    int startFrame = g_ExportInstance.scene.startTime * g_ExportInstance.scene.fps;
-    int endFrame = g_ExportInstance.scene.endTime * g_ExportInstance.scene.fps;
+    float inc = (g_ExportInstance.scene->endTime - g_ExportInstance.scene->startTime) / g_ExportInstance.scene->fps;
+    int startFrame = g_ExportInstance.scene->startTime * g_ExportInstance.scene->fps;
+    int endFrame = g_ExportInstance.scene->endTime * g_ExportInstance.scene->fps;
 
-    float curTime = g_ExportInstance.scene.startTime;
+    float curTime = g_ExportInstance.scene->startTime;
     vector<float> values;
     for (int curFrame = startFrame; curFrame <= endFrame; curFrame++)
     {
       float value = track->GetValue(
-          g_ExportInstance.doc, melange::BaseTime((float)curFrame / g_ExportInstance.scene.fps), g_ExportInstance.scene.fps);
+          g_ExportInstance.doc, melange::BaseTime((float)curFrame / g_ExportInstance.scene->fps), g_ExportInstance.scene->fps);
       values.push_back(value);
       curTime += inc;
     }
@@ -170,8 +170,8 @@ void CollectionAnimationTracksForObj(melange::BaseList2D* bl, vector<ImTrack>* t
 void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
 {
   // add default material
-  g_ExportInstance.scene.materials.push_back(new ImMaterial());
-  ImMaterial* exporterMaterial = g_ExportInstance.scene.materials.back();
+  g_ExportInstance.scene->materials.push_back(new ImMaterial());
+  ImMaterial* exporterMaterial = g_ExportInstance.scene->materials.back();
   exporterMaterial->mat = nullptr;
   exporterMaterial->name = "<default>";
   exporterMaterial->id = ~0u;
@@ -191,8 +191,8 @@ void CollectMaterials(melange::AlienBaseDocument* c4dDoc)
     string name = CopyString(mat->GetName());
 
 
-    g_ExportInstance.scene.materials.push_back(new ImMaterial());
-    ImMaterial* exporterMaterial = g_ExportInstance.scene.materials.back();
+    g_ExportInstance.scene->materials.push_back(new ImMaterial());
+    ImMaterial* exporterMaterial = g_ExportInstance.scene->materials.back();
     exporterMaterial->mat = mat;
     exporterMaterial->name = name;
 

@@ -148,7 +148,6 @@ struct ImLight : public ImBaseObject
   };
 
   ImLight(melange::BaseObject* melangeObj) : ImBaseObject(melangeObj) {}
-  ~ImLight() {}
 
   Type type;
   Color color;
@@ -258,6 +257,7 @@ struct ImMesh : public ImBaseObject
 //------------------------------------------------------------------------------
 struct ImScene
 {
+  ~ImScene();
   ImBaseObject* FindObject(melange::BaseObject* obj);
   melange::BaseObject* FindMelangeObject(ImBaseObject* obj);
   ImMaterial* FindMaterial(melange::BaseMaterial* mat);
@@ -270,7 +270,6 @@ struct ImScene
   vector<ImSpline*> splines;
   unordered_map<melange::BaseObject*, ImBaseObject*> melangeToImObject;
   unordered_map<ImBaseObject*, melange::BaseObject*> imObjectToMelange;
-  //unordered_map<melange::BaseObject*, vector<ImSampledTrack>> sampledAnimations;
 
   ImSphere boundingSphere;
   ImAABB boundingBox;

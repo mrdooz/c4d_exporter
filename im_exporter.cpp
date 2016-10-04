@@ -55,7 +55,7 @@ static void ExportSpline(melange::BaseObject* obj)
     s->points.push_back(points[i].z);
   }
 
-  g_ExportInstance.scene.splines.push_back(s);
+  g_ExportInstance.scene->splines.push_back(s);
 }
 
 //-----------------------------------------------------------------------------
@@ -110,7 +110,7 @@ bool melange::AlienPrimitiveObjectData::Execute()
       ImPrimitiveCube* prim = new ImPrimitiveCube(baseObj);
       CopyBaseTransform(baseObj, prim);
       prim->size = GetVectorParam<vec3>(baseObj, PRIM_CUBE_LEN);
-      g_ExportInstance.scene.primitives.push_back(prim);
+      g_ExportInstance.scene->primitives.push_back(prim);
       return true;
     }
   }
@@ -129,7 +129,7 @@ bool melange::AlienNullObjectData::Execute()
 
   CopyBaseTransform(baseObj, nullObject);
 
-  g_ExportInstance.scene.nullObjects.push_back(nullObject);
+  g_ExportInstance.scene->nullObjects.push_back(nullObject);
 
   ExportSplineChildren(baseObj);
 
@@ -187,7 +187,7 @@ bool melange::AlienCameraObjectData::Execute()
 
     // defer finding the target object until all objects have been parsed
     g_ExportInstance.deferredFunctions.push_back([=]() {
-      cameraPtr->targetObj = g_ExportInstance.scene.FindObject(targetObj);
+      cameraPtr->targetObj = g_ExportInstance.scene->FindObject(targetObj);
       if (!cameraPtr->targetObj)
       {
         g_ExportInstance.Log(1, "Unable to find target object: %s", CopyString(targetObj->GetName()).c_str());
@@ -197,7 +197,7 @@ bool melange::AlienCameraObjectData::Execute()
     });
   }
 
-  g_ExportInstance.scene.cameras.push_back(camera.release());
+  g_ExportInstance.scene->cameras.push_back(camera.release());
 
   return true;
 }
@@ -258,7 +258,7 @@ bool melange::AlienLightObjectData::Execute()
     return true;
   }
 
-  g_ExportInstance.scene.lights.push_back(light.release());
+  g_ExportInstance.scene->lights.push_back(light.release());
 
   return true;
 }
@@ -676,7 +676,7 @@ static void CollectVertices(
   for (const pair<AlienMaterial*, vector<int>>& kv : polysByMaterial)
   {
     ImMesh::MaterialGroup mg;
-    ImMaterial* mat = g_ExportInstance.scene.FindMaterial(kv.first);
+    ImMaterial* mat = g_ExportInstance.scene->FindMaterial(kv.first);
     mg.materialId = mat ? mat->id : ~0;
     mg.startIndex = startIdx;
 
@@ -864,9 +864,9 @@ bool AlienPolygonObjectData::Execute()
 
   CopyBaseTransform(baseObj, mesh.get());
   CreateGeometry(polyObj, mesh.get());
-  g_ExportInstance.scene.boundingBox = g_ExportInstance.scene.boundingBox.Extend(mesh->geometry.aabb);
+  g_ExportInstance.scene->boundingBox = g_ExportInstance.scene->boundingBox.Extend(mesh->geometry.aabb);
 
-  g_ExportInstance.scene.meshes.push_back(mesh.release());
+  g_ExportInstance.scene->meshes.push_back(mesh.release());
 
   return true;
 }

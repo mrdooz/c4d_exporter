@@ -50,13 +50,15 @@ namespace melange
 
 struct ExportInstance
 {
+  ~ExportInstance();
+  void Reset();
   void Log(int level, const char* fmt, ...) const;
-  ImScene scene;
+  ImScene* scene = nullptr;
   Options options;
   // Fixup functions called after the scene has been read and processed.
   vector<function<bool()>> deferredFunctions;
-  melange::AlienBaseDocument* doc;
-  melange::HyperFile* file;
+  melange::AlienBaseDocument* doc = nullptr;
+  melange::HyperFile* file = nullptr;
 };
 
 extern ExportInstance g_ExportInstance;

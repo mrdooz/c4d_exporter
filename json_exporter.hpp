@@ -6,7 +6,7 @@ struct JsonWriter;
 
 struct JsonExporter
 {
-  JsonExporter(const ExportInstance& instance) : instance(instance)
+  JsonExporter(ExportInstance* instance) : instance(instance)
   {
   }
 
@@ -25,7 +25,7 @@ struct JsonExporter
   void ExportMaterials(const vector<ImMaterial*>& materials, JsonWriter* w);
   void ExportMaterialComponentShader(const ImMaterialComponent& component, JsonWriter* w);
 
-  void CreateSDF3(const ExportInstance& instance, JsonWriter* w);
+  void CreateSDF3(JsonWriter* w);
 
   void AddToBuffer(const char* data, size_t len, const string& name, JsonWriter* w);
 
@@ -35,6 +35,6 @@ struct JsonExporter
     AddToBuffer((const char*)v.data(), v.size() * sizeof(T), name, w);
   }
 
-  ExportInstance instance;
+  ExportInstance* instance;
 };
 

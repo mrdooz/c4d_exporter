@@ -411,7 +411,7 @@ static void CreateSDF2(const ExportInstance& instance, JsonWriter* w)
 
   vec3 minPos{ +FLT_MAX, +FLT_MAX, +FLT_MAX };
   vec3 maxPos{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
-  for (const ImMesh* mesh : instance.scene.meshes)
+  for (const ImMesh* mesh : instance.scene->meshes)
   {
     if (!TrianglesFromMesh2(instance, mesh, &triangles, &vertices, &minPos, &maxPos))
       continue;
@@ -459,15 +459,15 @@ static void CreateSDF2(const ExportInstance& instance, JsonWriter* w)
 }
 
 //------------------------------------------------------------------------------
-void JsonExporter::CreateSDF3(const ExportInstance& instance, JsonWriter* w)
+void JsonExporter::CreateSDF3(JsonWriter* w)
 {
   using melange::Vector;
 
-  size_t gridRes = instance.options.gridSize;
+  size_t gridRes = instance->options.gridSize;
   vector<float> sdf(gridRes*gridRes*gridRes);
 
-  vec3 minPos = instance.scene.boundingBox.minValue;
-  vec3 maxPos = instance.scene.boundingBox.maxValue;
+  vec3 minPos = instance->scene->boundingBox.minValue;
+  vec3 maxPos = instance->scene->boundingBox.maxValue;
   vec3 span = maxPos - minPos;
   minPos = minPos - 0.05f * span;
   maxPos = maxPos + 0.05f * span;
@@ -490,7 +490,7 @@ void JsonExporter::CreateSDF3(const ExportInstance& instance, JsonWriter* w)
         float closestDistance = FLT_MAX;
         vec3 closestPt, closestNormal;
 
-        for (const ImMesh* mesh : instance.scene.meshes)
+        for (const ImMesh* mesh : instance->scene->meshes)
         {
           const ImMeshVertex* verts = mesh->geometry.vertices.data();
 
@@ -538,7 +538,7 @@ void JsonExporter::CreateSDF3(const ExportInstance& instance, JsonWriter* w)
                 }
                 else
                 {
-                  instance.Log(1, "Unable to find edge: %d - %d\n", a, b);
+                  instance->Log(1, "Unable to find edge: %d - %d\n", a, b);
                 }
 
               }

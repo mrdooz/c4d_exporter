@@ -136,7 +136,7 @@ void JsonExporter::ExportWorldGeometry(JsonWriter* w)
   vector<vec3> vertexNormals;
 
   int faceOfs = 0;
-  for (ImMesh* mesh : instance.scene.meshes)
+  for (ImMesh* mesh : instance->scene->meshes)
   {
     vertices += mesh->geometry.vertices;
     vertexNormals += mesh->geometry.vertexNormals;
@@ -258,7 +258,7 @@ void JsonExporter::ExportAnimationTracks(ImBaseObject* obj, JsonWriter* w)
         writer.Write(vv, numBits);
       }
 
-      w->Emit("fps", instance.scene.fps);
+      w->Emit("fps", instance->scene->fps);
       w->Emit("numKeys", track.values.size());
       w->Emit("minValue", minValue);
       w->Emit("maxValue", maxValue);
@@ -335,16 +335,16 @@ void JsonExporter::ExportSceneInfo(JsonWriter* w)
       allObjects.push_back(obj);
     };
 
-    for (ImBaseObject* obj : instance.scene.nullObjects)
+    for (ImBaseObject* obj : instance->scene->nullObjects)
       fnAddElem("Null", obj);
 
-    for (ImBaseObject* obj : instance.scene.cameras)
+    for (ImBaseObject* obj : instance->scene->cameras)
       fnAddElem("Camera", obj);
 
-    for (ImBaseObject* obj : instance.scene.lights)
+    for (ImBaseObject* obj : instance->scene->lights)
       fnAddElem("Light", obj);
 
-    for (ImBaseObject* obj : instance.scene.meshes)
+    for (ImBaseObject* obj : instance->scene->meshes)
       fnAddElem("Mesh", obj);
   }
 
@@ -360,7 +360,7 @@ void JsonExporter::ExportSceneInfo(JsonWriter* w)
     }
   }
 
-  w->Emit("buffer", instance.options.outputBase + ".dat");
+  w->Emit("buffer", instance->options.outputBase + ".dat");
   {
     JsonWriter::JsonScope s(w, "geometry", JsonWriter::CompoundType::Object);
     ExportWorldGeometry(w);
@@ -439,7 +439,7 @@ void JsonExporter::ExportMaterialComponentShader(const ImMaterialComponent& comp
     auto itType = typeToName.find(gradientType);
     if (itType == typeToName.end())
     {
-      instance.Log(1, "Unsupported gradient type: %d\n", gradientType);
+      instance->Log(1, "Unsupported gradient type: %d\n", gradientType);
       return;
     }
 
@@ -447,7 +447,7 @@ void JsonExporter::ExportMaterialComponentShader(const ImMaterialComponent& comp
     auto itInter = interToName.find(inter);
     if (itInter == interToName.end())
     {
-      instance.Log(1, "Unsupported interpolation type: %d\n", inter);
+      instance->Log(1, "Unsupported interpolation type: %d\n", inter);
       return;
     }
 
@@ -498,7 +498,7 @@ void JsonExporter::ExportMaterialComponentShader(const ImMaterialComponent& comp
   }
   else
   {
-    instance.Log(1, "Skipping unknown shader type: %d\n", shaderType);
+    instance->Log(1, "Skipping unknown shader type: %d\n", shaderType);
   }
 }
 
@@ -540,23 +540,23 @@ bool JsonExporter::Export(SceneStats* stats)
 
     ExportSceneInfo(&w);
 
-    ExportNullObjects(instance.scene.nullObjects, &w);
-    ExportCameras(instance.scene.cameras, &w);
-    ExportLights(instance.scene.lights, &w);
-    ExportMeshes(instance.scene.meshes, &w);
-    ExportMaterials(instance.scene.materials, &w);
-    ExportPrimitives(instance.scene.primitives, &w);
+    ExportNullObjects(instance->scene->nullObjects, &w);
+    ExportCameras(instance->scene->cameras, &w);
+    ExportLights(instance->scene->lights, &w);
+    ExportMeshes(instance->scene->meshes, &w);
+    ExportMaterials(instance->scene->materials, &w);
+    ExportPrimitives(instance->scene->primitives, &w);
 
-    if (instance.options.sdf)
+    if (instance->options.sdf)
     {
       //CreateSDF(scene, options, &w);
       //CreateSDF2(scene, options, &w);
-      CreateSDF3(instance, &w);
+      CreateSDF3(&w);
     }
   }
 
   // save the json file
-  FILE* f = fopen(string(instance.options.outputPrefix + ".json").c_str(), "wt");
+  FILE* f = fopen(string(instance->options.outputPrefix + ".json").c_str(), "wt");
   if (f)
   {
     fputs(w.res.c_str(), f);
@@ -566,7 +566,7 @@ bool JsonExporter::Export(SceneStats* stats)
   // save the data buffer
   if (buffer.size() > 0)
   {
-    f = fopen(string(instance.options.outputPrefix + ".dat").c_str(), "wb");
+    f = fopen(string(instance->options.outputPrefix + ".dat").c_str(), "wb");
     if (f)
     {
       fwrite(buffer.data(), buffer.size(), 1, f);

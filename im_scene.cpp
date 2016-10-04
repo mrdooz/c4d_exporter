@@ -5,9 +5,15 @@
 extern ExportInstance g_ExportInstance;
 
 //-----------------------------------------------------------------------------
+ImScene::~ImScene()
+{
+
+}
+
+//-----------------------------------------------------------------------------
 ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
   : melangeObj(melangeObj)
-  , parent(g_ExportInstance.scene.FindObject(melangeObj->GetUp()))
+  , parent(g_ExportInstance.scene->FindObject(melangeObj->GetUp()))
   , name(CopyString(melangeObj->GetName()))
   , id(ImScene::nextObjectId++)
 {
@@ -29,8 +35,8 @@ ImBaseObject::ImBaseObject(melange::BaseObject* melangeObj)
       return true;
     });
   }
-  g_ExportInstance.scene.melangeToImObject[melangeObj] = this;
-  g_ExportInstance.scene.imObjectToMelange[this] = melangeObj;
+  g_ExportInstance.scene->melangeToImObject[melangeObj] = this;
+  g_ExportInstance.scene->imObjectToMelange[this] = melangeObj;
 }
 
 //------------------------------------------------------------------------------
